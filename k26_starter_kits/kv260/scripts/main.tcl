@@ -112,14 +112,14 @@ set_property platform.vendor "xilinx" [current_project]
             
 set_property platform.version "1.0" [current_project]
 
-launch_runs synth_1 -jobs $jobs
-wait_on_run synth_1
+#launch_runs synth_1 -jobs $jobs
+#wait_on_run synth_1
 
-launch_runs impl_1 -to_step write_bitstream
-wait_on_run impl_1
+#launch_runs impl_1 -to_step write_bitstream
+#wait_on_run impl_1
 
-write_hw_platform -fixed -force -include_bit  -file $proj_dir/${proj_name}.xsa
-validate_hw_platform -verbose $proj_dir/${proj_name}.xsa
+#write_hw_platform -fixed -force -include_bit  -file $proj_dir/${proj_name}.xsa
+#validate_hw_platform -verbose $proj_dir/${proj_name}.xsa
 
 exit
         

@@ -1,0 +1,6 @@
+[submodule "ip/common_cells"]
+	path = ip/common_cells
+	url = git@github.com:cornway/common_cells.git
+[submodule "ip/axi"]
+	path = ip/axi
+	url = git@github.com:cornway/axi.git

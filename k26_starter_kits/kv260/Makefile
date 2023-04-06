@@ -27,6 +27,15 @@ xsa: $(VIV_XSA)
 $(VIV_XSA): $(VIV_SRC)
 	$(VIVADO) -mode batch -notrace -source $(VIV_SRC) -tclargs -jobs $(JOBS) -proj_name $(PROJ_NAME)
 
+
+.PHONY: project
+project:
+	$(VIVADO) -mode tcl -source $(VIV_SRC) -tclargs -proj_name $(PROJ_NAME)
+
+.PHONY: threedo
+threedo:
+	$(VIVADO) -mode tcl -source $(VIV_SCRIPTS_DIR)/threedo.tcl
+
 .PHONY: clean
 clean:
 	$(RM) $(VIV_PRJ_DIR) vivado* .Xil *dynamic* *.log *.xpe
