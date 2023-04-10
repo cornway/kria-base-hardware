@@ -67,7 +67,7 @@ task _read (input logic [ADDR_WIDTH-1:0] addr, output logic [DATA_WIDTH-1:0] dat
     addra <= #TA addr;
     cycle_start();
     data = douta;
-    cycle_end();   
+    cycle_end();
     ena <= #TA '0;
     addra <= #TA '0;
 
@@ -84,6 +84,22 @@ initial begin
     _write(M_REGS_ADDR + 32'h18, 32'h00110011);
 
     _write(M_REGS_ADDR + 32'h100, 32'h12345678);
+
+    _write(M_CEL_VARS_ADDR + 32'h0, 32'h12345678);
+    _read(M_CEL_VARS_ADDR + 32'h0, read_data);
+    $display("read_data = %x", read_data);
+
+    _write(M_CEL_VARS_ADDR + 32'h40, 32'hcafecafe);
+    _read(M_CEL_VARS_ADDR + 32'h40, read_data);
+    $display("read_data = %x", read_data);
+
+    _write(M_CEL_VARS_ADDR + 32'h80, 32'hdeaddead);
+    _read(M_CEL_VARS_ADDR + 32'h80, read_data);
+    $display("read_data = %x", read_data);
+
+    _write(M_CEL_VARS_ADDR + 32'hc0, 32'hbeefbeef);
+    _read(M_CEL_VARS_ADDR + 32'hc0, read_data);
+    $display("read_data = %x", read_data);
 
     _write(M_UTIL_ADDR + 32'h0, 32'h7000_0000);
     _write(M_UTIL_ADDR + 32'h8, 32'h0000_0008);

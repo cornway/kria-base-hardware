@@ -79,12 +79,10 @@ logic [ADDR_WIDTH-1:0] ps_mem_offset;
 logic [ADDR_WIDTH-1:0] mr_addra_off;
 logic [ADDR_WIDTH-1:0] mr_reg_id;
 logic [DATA_WIDTH-1:0] mr_douta_reg;
-logic [ADDR_WIDTH-1:0] cel_vars_addr_off;
 logic [DATA_WIDTH-1:0] pbsq_dout;
 
 assign mr_addra_off = mr_addra & (~M_ADDR_MASK);
 assign mr_reg_id = `ADDR_TO_REG_ID(mr_addra_off);
-assign cel_vars_reg_id = `ADDR_TO_REG_ID(mr_addra_off & (~CEL_VARS_SUB_SIZE));
 assign mr_douta = mr_douta_reg;
 
 
@@ -136,10 +134,10 @@ always_ff @( posedge mr_clka ) begin
                 mcore.regs[mr_reg_id] <= mr_dina;
             end
             M_CEL_VARS_ADDR: begin
-                if (mr_addra_off & CEL_VARS_SUB_SIZE) begin
-                    mcore.cel_vars.var_unsigned[cel_vars_reg_id] <= mr_dina;
+                if (mr_reg_id & CEL_VARS_SUB_SIZE) begin
+                    mcore.cel_vars.var_unsigned[mr_reg_id ^ CEL_VARS_SUB_SIZE] <= mr_dina;
                 end else begin
-                    mcore.cel_vars.var_signed[cel_vars_reg_id] <= mr_dina;
+                    mcore.cel_vars.var_signed[mr_reg_id] <= mr_dina;
                 end
             end
             M_UTIL_ADDR: begin
@@ -188,10 +186,10 @@ always_ff @(posedge mr_clka) begin
                 mr_douta_reg <= mcore.regs[mr_reg_id];
             end
             M_CEL_VARS_ADDR: begin
-                if (mr_addra_off & CEL_VARS_SUB_SIZE) begin
-                    mr_douta_reg <= mcore.cel_vars.var_unsigned[cel_vars_reg_id];
+                if (mr_reg_id & CEL_VARS_SUB_SIZE) begin
+                    mr_douta_reg <= mcore.cel_vars.var_unsigned[mr_reg_id ^ CEL_VARS_SUB_SIZE];
                 end else begin
-                    mr_douta_reg <= mcore.cel_vars.var_signed[cel_vars_reg_id];
+                    mr_douta_reg <= mcore.cel_vars.var_signed[mr_reg_id];
                 end
             end
             M_UTIL_ADDR: begin
