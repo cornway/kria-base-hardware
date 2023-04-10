@@ -79,6 +79,12 @@ initial begin
     read_data = '0;
     wait(aresetn)
 
+    _write(M_REGS_ADDR + 32'h0, 32'h00550055);
+    _write(M_REGS_ADDR + 32'h10, 32'h00aa00aa);
+    _write(M_REGS_ADDR + 32'h18, 32'h00110011);
+
+    _write(M_REGS_ADDR + 32'h100, 32'h12345678);
+
     _write(M_UTIL_ADDR + 32'h0, 32'h7000_0000);
     _write(M_UTIL_ADDR + 32'h8, 32'h0000_0008);
     _write(M_UTIL_ADDR + 32'hc, 32'hcafe_0000);

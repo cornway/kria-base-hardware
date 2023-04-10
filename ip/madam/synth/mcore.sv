@@ -4,8 +4,8 @@
 `include "typedef.svh"
 
 interface ps_mem_if #(
-    parameter DATA_WIDTH = 32,
-    parameter ADDR_WIDTH = 32
+    parameter DATA_WIDTH = 32'd32,
+    parameter ADDR_WIDTH = 32'd32
 );
 
     logic req;
@@ -21,11 +21,11 @@ interface ps_mem_if #(
 endinterface
 
 module mcore_top #(
-    parameter DATA_WIDTH = 32,
-    parameter ADDR_WIDTH = 32,
+    parameter DATA_WIDTH = 32'd32,
+    parameter ADDR_WIDTH = 32'd32,
 
-    AXI_ADDR_WIDTH = 32,
-    AXI_DATA_WIDTH = 32,
+    AXI_ADDR_WIDTH = 32'd32,
+    AXI_DATA_WIDTH = 32'd32,
     AXI_ID_WIDTH = 1,
     AXI_USER_WIDTH = 1
 ) (
@@ -69,12 +69,24 @@ module mcore_top #(
 
 );
 
+localparam DATA_ADDR_INC = DATA_WIDTH/8;
+
+`define REG_ADDR(_x) 32'd0 + DATA_ADDR_INC*_x
+`define ADDR_TO_REG_ID(_addr) (_addr >> $clog2(DATA_WIDTH/8))
+`define BITS_FROM_INDEX(_i, _bits) (_i + 1) * _bits - 1 : _i * _bits
+
 logic [ADDR_WIDTH-1:0] ps_mem_offset;
 logic [ADDR_WIDTH-1:0] mr_addra_off;
+logic [ADDR_WIDTH-1:0] mr_reg_id;
 logic [DATA_WIDTH-1:0] mr_douta_reg;
+logic [ADDR_WIDTH-1:0] cel_vars_addr_off;
+logic [DATA_WIDTH-1:0] pbsq_dout;
 
 assign mr_addra_off = mr_addra & (~M_ADDR_MASK);
+assign mr_reg_id = `ADDR_TO_REG_ID(mr_addra_off);
+assign cel_vars_reg_id = `ADDR_TO_REG_ID(mr_addra_off & (~CEL_VARS_SUB_SIZE));
 assign mr_douta = mr_douta_reg;
+
 
 ps_mem_if #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -87,8 +99,8 @@ logic [31:0] ps_mem_test_data_count_p, ps_mem_test_data_count;
 logic [31:0] ps_mem_test_data_count_next;
 logic [31:0] ps_mem_test_value;
 
-
 mcore_t mcore;
+integer i;
 
 always_ff @( posedge mr_clka ) begin
     if (!aresetn) begin
@@ -97,37 +109,51 @@ always_ff @( posedge mr_clka ) begin
         ps_mem_offset <= '0;
         ps_mem_test_value <= '0;
     end else if (mr_ena && mr_wea) begin
-        case (mr_addra & M_ADDR_MASK)
-            M_FSM_ADDR: begin
-                mcore.fsm <= mr_dina;
-            end
-            M_WMOD_ADDR: begin
-                mcore.wmod <= mr_dina;
-            end
-            M_RMOD_ADDR: begin
-                mcore.rmod <= mr_dina;
+        unique case (mr_addra & M_ADDR_MASK)
+            M_RMOD_WMOD_FSM_ADDR: begin
+                unique case(mr_reg_id)
+                    32'h0: begin
+                        mcore.rmod <= mr_dina;
+                    end
+                    32'h1: begin
+                        mcore.wmod <= mr_dina;
+                    end
+                    32'h2: begin
+                        mcore.fsm <= mr_dina;
+                    end
+                endcase
             end
             M_PBUSQ_ADDR: begin
-                mcore.pbus_queue[mr_addra_off] <= mr_dina;
+                for (i = 0; i < DATA_WIDTH/8; i++) begin
+                    if (mr_wea[i])
+                        mcore.pbus_queue[mr_reg_id + i] <= byte_t'(mr_dina >> (i * 8));
+                end
             end
             M_PLUT_ADDR: begin
-                mcore.plut[mr_addra_off] <= mr_dina;
+                mcore.plut[mr_reg_id] <= mr_dina;
             end
             M_REGS_ADDR: begin
-                mcore.regs[mr_addra_off] <= mr_dina;
+                mcore.regs[mr_reg_id] <= mr_dina;
+            end
+            M_CEL_VARS_ADDR: begin
+                if (mr_addra_off & CEL_VARS_SUB_SIZE) begin
+                    mcore.cel_vars.var_unsigned[cel_vars_reg_id] <= mr_dina;
+                end else begin
+                    mcore.cel_vars.var_signed[cel_vars_reg_id] <= mr_dina;
+                end
             end
             M_UTIL_ADDR: begin
-                case (mr_addra_off)
+                case (mr_reg_id)
                     32'h0: begin
                         ps_mem_offset <= mr_dina;
                     end
-                    32'h4: begin
+                    32'h1: begin
                         ps_mem_test_req <= ~ps_mem_test_req;
                     end
-                    32'h8: begin
+                    32'h2: begin
                         ps_mem_test_data_count_p <= mr_dina;
                     end
-                    32'hc: begin
+                    32'h3: begin
                         ps_mem_test_value <= mr_dina;
                     end
                 endcase
@@ -136,52 +162,72 @@ always_ff @( posedge mr_clka ) begin
     end
 end
 
-always_comb begin
+always_ff @(posedge mr_clka) begin
     if (mr_ena) begin
-        case (mr_addra & M_ADDR_MASK)
-            M_FSM_ADDR: begin
-                mr_douta_reg = mcore.fsm;
-            end
-            M_WMOD_ADDR: begin
-                mr_douta_reg = mcore.wmod;
-            end
-            M_RMOD_ADDR: begin
-                mr_douta_reg = mcore.rmod;
+        unique case (mr_addra & M_ADDR_MASK)
+            M_RMOD_WMOD_FSM_ADDR: begin
+                unique case(mr_reg_id)
+                    32'h0: begin
+                        mr_douta_reg <= mcore.rmod;
+                    end
+                    32'h1: begin
+                        mr_douta_reg <= mcore.wmod;
+                    end
+                    32'h2: begin
+                        mr_douta_reg <= mcore.fsm;
+                    end
+                endcase
             end
             M_PBUSQ_ADDR: begin
-                mr_douta_reg = mcore.pbus_queue[mr_addra_off];
+                mr_douta_reg <= pbsq_dout;
             end
             M_PLUT_ADDR: begin
-                mr_douta_reg = mcore.plut[mr_addra_off];
+                mr_douta_reg <= mcore.plut[mr_reg_id];
             end
             M_REGS_ADDR: begin
-                mr_douta_reg = mcore.regs[mr_addra_off];
+                mr_douta_reg <= mcore.regs[mr_reg_id];
+            end
+            M_CEL_VARS_ADDR: begin
+                if (mr_addra_off & CEL_VARS_SUB_SIZE) begin
+                    mr_douta_reg <= mcore.cel_vars.var_unsigned[cel_vars_reg_id];
+                end else begin
+                    mr_douta_reg <= mcore.cel_vars.var_signed[cel_vars_reg_id];
+                end
             end
             M_UTIL_ADDR: begin
-                case (mr_addra_off)
+                case (mr_reg_id)
                     32'h0: begin
-                        mr_douta_reg = ps_mem_offset;
+                        mr_douta_reg <= ps_mem_offset;
                     end
-                    32'h4: begin
-                        mr_douta_reg = ps_mem_test_req == ps_mem_test_resp;
+                    32'h1: begin
+                        mr_douta_reg <= ps_mem_test_req == ps_mem_test_resp;
                     end
-                    32'h8: begin
-                        mr_douta_reg = ps_mem_test_data_count;
+                    32'h2: begin
+                        mr_douta_reg <= ps_mem_test_data_count;
                     end
-                    32'hc: begin
-                        mr_douta_reg = ps_mem_test_value;
+                    32'h3: begin
+                        mr_douta_reg <= ps_mem_test_value;
                     end
                 default: begin
-                    mr_douta_reg = '0;
+                    mr_douta_reg <= '0;
                 end
                 endcase
             end
             default: begin
-                mr_douta_reg = '0;
+                mr_douta_reg <= '0;
             end
         endcase
     end
 end
+
+genvar j;
+generate
+
+for (j = 0; j < DATA_WIDTH/8; j++) begin
+    assign pbsq_dout[`BITS_FROM_INDEX(j, 8)] = mcore.pbus_queue[mr_reg_id + j];
+end
+
+endgenerate
 
 typedef enum logic[2:0] { psmt_idle, psmt_write, psmt_resp } ps_mtest_state_t;
 

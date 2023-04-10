@@ -1,10 +1,10 @@
 
 
 module mcore_top_wrapper #(
-    parameter DATA_WIDTH = 32,
-    parameter ADDR_WIDTH = 32,
-    parameter AXI_ADDR_WIDTH = 32,
-    parameter AXI_DATA_WIDTH = 32
+    parameter DATA_WIDTH = 32'd32,
+    parameter ADDR_WIDTH = 32'd32,
+    parameter AXI_ADDR_WIDTH = 32'd32,
+    parameter AXI_DATA_WIDTH = 32'd32
 ) (
 
     (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME MREGS, MEM_ECC NONE, MASTER_TYPE BRAM_CTRL, READ_WRITE_MODE READ_WRITE, READ_LATENCY 1" *)
@@ -98,7 +98,9 @@ module mcore_top_wrapper #(
 );
 
 mcore_top #(.DATA_WIDTH(DATA_WIDTH),
-            .ADDR_WIDTH(ADDR_WIDTH))
+            .ADDR_WIDTH(ADDR_WIDTH),
+            .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH),
+            .AXI_DATA_WIDTH(AXI_DATA_WIDTH))
             mcore_top_inst (
                 .aclk(aclk),
                 .aresetn(aresetn),
