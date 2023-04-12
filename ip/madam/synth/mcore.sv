@@ -3,23 +3,6 @@
 `include "mcore_defs.svh"
 `include "typedef.svh"
 
-interface ps_mem_if #(
-    parameter DATA_WIDTH = 32'd32,
-    parameter ADDR_WIDTH = 32'd32
-);
-
-    logic req;
-    logic [ADDR_WIDTH-1:0] addr;
-    logic we;
-    logic [DATA_WIDTH-1:0] wdata;
-    logic [DATA_WIDTH/8-1:0] be;
-    logic gnt;
-    logic rsp_valid;
-    logic [DATA_WIDTH-1:0] rsp_rdata;
-    logic rsp_error;
-
-endinterface
-
 module mcore_top #(
     parameter DATA_WIDTH = 32'd32,
     parameter ADDR_WIDTH = 32'd32,
@@ -86,7 +69,7 @@ assign mr_reg_id = `ADDR_TO_REG_ID(mr_addra_off);
 assign mr_douta = mr_douta_reg;
 
 
-ps_mem_if #(
+mem_if #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH)
 ) ps_mem();
