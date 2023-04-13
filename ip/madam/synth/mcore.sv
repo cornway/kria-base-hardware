@@ -1,5 +1,6 @@
+`timescale 1ns/1ps
 
-
+`include "bitreader_types.svh"
 `include "mcore_defs.svh"
 `include "typedef.svh"
 
@@ -24,31 +25,19 @@ module mcore_top #(
     input wire mr_ena,
     input wire [DATA_WIDTH/8-1:0] mr_wea,
 
-    //Req channel
-    output wire [AXI_ADDR_WIDTH-1:0] m_axi_aw_addr,
-    output wire [2:0] m_axi_aw_prot,
-    output wire m_axi_aw_valid,
-    output wire [AXI_DATA_WIDTH-1:0] m_axi_w_data,
-    output wire [AXI_DATA_WIDTH/8-1:0] m_axi_w_strb,
-    output wire m_axi_w_valid,
-    output wire m_axi_b_ready,
-    output wire [AXI_ADDR_WIDTH-1:0] m_axi_ar_addr,
-    output wire [2:0] m_axi_ar_prot,
-    output wire m_axi_ar_valid,
-    output wire m_axi_r_ready,
+    //Memory interface
+    output wire mem_req,
+    output wire [ADDR_WIDTH-1:0] mem_addr,
+    output wire mem_we,
+    output wire [DATA_WIDTH-1:0] mem_wdata,
+    output wire [DATA_WIDTH/8-1:0] mem_be,
 
-    //Resp channel
-    input wire m_axi_aw_ready,
-    input wire m_axi_w_ready,
-    input wire [1:0] m_axi_b_resp,
-    input wire m_axi_b_valid,
-    input wire m_axi_ar_ready,
-    input wire [AXI_DATA_WIDTH-1:0] m_axi_r_data,
-    input wire [1:0] m_axi_r_resp,
-    input wire m_axi_r_valid,
+    input wire mem_gnt,
+    input wire mem_rsp_valid,
+    input wire [DATA_WIDTH-1:0] mem_rsp_rdata,
+    input wire mem_rsp_error,
 
-
-    output wire [32:0] debug
+    output wire [63:0] debug_port
 
 );
 
@@ -74,21 +63,12 @@ mem_if #(
     .ADDR_WIDTH(ADDR_WIDTH)
 ) ps_mem();
 
-logic ps_mem_test_req, ps_mem_test_resp;
-logic ps_mem_test_resp_next;
-logic [31:0] ps_mem_test_data_count_p, ps_mem_test_data_count;
-logic [31:0] ps_mem_test_data_count_next;
-logic [31:0] ps_mem_test_value;
-
 mcore_t mcore;
 integer i;
 
 always_ff @( posedge mr_clka ) begin
     if (!aresetn) begin
-        ps_mem_test_req <= '0;
-        ps_mem_test_data_count_p <= '0;
-        ps_mem_offset <= '0;
-        ps_mem_test_value <= '0;
+
     end else if (mr_ena && mr_wea) begin
         unique case (mr_addra & M_ADDR_MASK)
             M_RMOD_WMOD_FSM_ADDR: begin
@@ -123,22 +103,8 @@ always_ff @( posedge mr_clka ) begin
                     mcore.cel_vars.var_signed[mr_reg_id] <= mr_dina;
                 end
             end
-            M_UTIL_ADDR: begin
-                case (mr_reg_id)
-                    32'h0: begin
-                        ps_mem_offset <= mr_dina;
-                    end
-                    32'h1: begin
-                        ps_mem_test_req <= ~ps_mem_test_req;
-                    end
-                    32'h2: begin
-                        ps_mem_test_data_count_p <= mr_dina;
-                    end
-                    32'h3: begin
-                        ps_mem_test_value <= mr_dina;
-                    end
-                endcase
-            end
+        default: begin
+        end
         endcase
     end
 end
@@ -181,13 +147,16 @@ always_ff @(posedge mr_clka) begin
                         mr_douta_reg <= ps_mem_offset;
                     end
                     32'h1: begin
-                        mr_douta_reg <= ps_mem_test_req == ps_mem_test_resp;
+                        mr_douta_reg <= bitreader_attach_addr;
                     end
                     32'h2: begin
-                        mr_douta_reg <= ps_mem_test_data_count;
+                        mr_douta_reg <= bitreader_busy;
                     end
                     32'h3: begin
-                        mr_douta_reg <= ps_mem_test_value;
+                        mr_douta_reg <= bitreader_data_out;
+                    end
+                    32'h4: begin
+                        mr_douta_reg <= bitreader_offset;
                     end
                 default: begin
                     mr_douta_reg <= '0;
@@ -210,121 +179,105 @@ end
 
 endgenerate
 
-typedef enum logic[2:0] { psmt_idle, psmt_write, psmt_resp } ps_mtest_state_t;
 
-ps_mtest_state_t psmt_state, psmt_state_next;
+//Bitreader/memory
 
-always_ff @(posedge mr_clka) begin
+logic [ADDR_WIDTH-1:0] bitreader_attach_addr;
+logic [DATA_WIDTH-1:0] bitreader_bitrate;
+logic [DATA_WIDTH-1:0] bitreader_bitskip;
+logic [DATA_WIDTH-1:0] bitreader_data_out;
+logic [ADDR_WIDTH-1:0] bitreader_offset;
+logic bitreader_aresetn;
+bitreader_op_e bitreader_op;
+logic bitreader_req, bitreader_busy, bitreader_data_ready;
+
+always_ff @( posedge mr_clka ) begin
     if (!aresetn) begin
-        ps_mem_test_resp <= '0;
-        ps_mem_test_data_count <= '0;
-        psmt_state <= psmt_idle;
+        ps_mem_offset <= '0;
+        bitreader_req <= '0;
+        bitreader_aresetn <= '1;
     end else begin
-        psmt_state <= psmt_state_next;
-        ps_mem_test_data_count <= ps_mem_test_data_count_next;
-        ps_mem_test_resp <= ps_mem_test_resp_next;
+        if (mr_ena && mr_wea) begin
+            unique case (mr_addra & M_ADDR_MASK)
+                M_UTIL_ADDR: begin
+                    case (mr_reg_id)
+                        32'h0: begin
+                            ps_mem_offset <= mr_dina;
+                        end
+                        32'h1: begin
+                            bitreader_req <= '1;
+                            bitreader_attach_addr <= mr_dina;
+                            bitreader_op <= BR_ATTACH;
+                        end
+                        32'h2: begin
+                            bitreader_req <= '1;
+                            bitreader_op <= bitreader_op_e'(mr_dina[1:0]);
+                            bitreader_bitrate <= mr_dina[15:8];
+                            bitreader_bitskip <= mr_dina[31:16];
+                        end
+                        32'h3: begin
+                            bitreader_aresetn <= '0;
+                            bitreader_attach_addr <= '0;
+                            bitreader_req <= '0;
+                            bitreader_op <= BR_ATTACH;
+                            bitreader_bitrate <= '0;
+                            bitreader_bitskip <= '0;
+                        end
+                        default: begin
+                        end
+                    endcase
+                end
+                default: begin
+                end
+            endcase
+        end
+        if (bitreader_busy) begin
+            bitreader_req <= '0;
+        end
+        if (!bitreader_aresetn) begin
+            bitreader_aresetn <= '1;
+        end
     end
 end
 
-assign debug[31] = ps_mem.req;
-assign debug[30] = ps_mem.we;
-assign debug[29] = ps_mem.gnt;
-assign debug[28] = ps_mem.rsp_valid;
-assign debug[27] = ps_mem.rsp_error;
-assign debug[26:24] = psmt_state;
+bitreader #(.DATA_WIDTH(DATA_WIDTH),
+            .ADDR_WIDTH(ADDR_WIDTH))
+            bitreader_inst (
+                .aclk(aclk),
+                .aresetn(aresetn && bitreader_aresetn),
 
-always_comb begin
-    ps_mem_test_resp_next = ps_mem_test_resp;
-    ps_mem_test_data_count_next = ps_mem_test_data_count;
-    psmt_state_next = psmt_state;
-    ps_mem.req = '0;
-    ps_mem.be = '0;
-    ps_mem.we = '0;
-    ps_mem.addr = '0;
-    ps_mem.wdata = '0;
-    case (psmt_state)
-        psmt_idle: begin
-            if (ps_mem_test_req != ps_mem_test_resp) begin
-                psmt_state_next = psmt_write;
-            end
-        end
-        psmt_write: begin
-            if (ps_mem_test_data_count < ps_mem_test_data_count_p) begin
-                ps_mem.addr = ps_mem_test_data_count << $clog2(DATA_WIDTH/8);
-                ps_mem.wdata = ps_mem_test_data_count | ps_mem_test_value;
-                ps_mem.be = '1;
-                ps_mem.we = '1;
-                ps_mem.req = '1;
-                if (ps_mem.gnt) begin
-                    psmt_state_next = psmt_resp;
-                end
-            end else begin
-                ps_mem_test_resp_next = ps_mem_test_req;
-                ps_mem_test_data_count_next = '0;
-                psmt_state_next = psmt_idle;
-            end
-        end
-        psmt_resp: begin
-            if (ps_mem.rsp_valid) begin
-                ps_mem_test_data_count_next = ps_mem_test_data_count + 1'b1;
-                psmt_state_next = psmt_write;
-            end
-        end
-    endcase
-end
+                .mem_req(ps_mem.req),
+                .mem_addr(ps_mem.addr),
+                .mem_we(ps_mem.we),
+                .mem_wdata(ps_mem.wdata),
+                .mem_be(ps_mem.be),
+                .mem_gnt(ps_mem.gnt),
+                .mem_rsp_valid(ps_mem.rsp_valid),
+                .mem_rsp_rdata(ps_mem.rsp_rdata),
+                .mem_rsp_error(ps_mem.rsp_error),
 
-`AXI_LITE_TYPEDEF_ALL(axi_lite, logic [AXI_ADDR_WIDTH-1:0], logic [AXI_DATA_WIDTH-1:0], logic [AXI_DATA_WIDTH/8-1:0])
-axi_lite_req_t axi_lite_req;
-axi_lite_resp_t axi_lite_rsp;
-
-  axi_lite_from_mem #(
-    .MemAddrWidth    ( ADDR_WIDTH        ),
-    .AxiAddrWidth    ( AXI_ADDR_WIDTH    ),
-    .DataWidth       ( DATA_WIDTH        ),
-    .MaxRequests     ( 32'd2             ),
-    .AxiProt         ( 32'b010           ),
-    .axi_req_t       ( axi_lite_req_t    ),
-    .axi_rsp_t       ( axi_lite_resp_t   )
-  ) i_axi_lite_from_mem (
-    .clk_i          (mr_clka),
-    .rst_ni         (aresetn),
-    .mem_req_i      (ps_mem.req),
-    .mem_addr_i     (ps_mem.addr),
-    .mem_we_i       (ps_mem.we),
-    .mem_wdata_i    (ps_mem.wdata),
-    .mem_be_i       (ps_mem.be),
-    .mem_gnt_o      (ps_mem.gnt),
-    .mem_rsp_valid_o(ps_mem.rsp_valid),
-    .mem_rsp_rdata_o(ps_mem.rsp_rdata),
-    .mem_rsp_error_o(ps_mem.rsp_error),
-    .axi_req_o       ( axi_lite_req    ),
-    .axi_rsp_i       ( axi_lite_rsp    )
-  );
+                .addr_in(bitreader_attach_addr),
+                .bitrate_in(bitreader_bitrate),
+                .bitskip_in(bitreader_bitskip),
+                .req(bitreader_req),
+                .op(bitreader_op),
+                .ap_busy(bitreader_busy),
+                .ap_data_ready(bitreader_data_ready),
+                .data_out(bitreader_data_out),
+                .offset_out(bitreader_offset),
+                .debug_port(debug_port)
+            );
 
 
+assign mem_req = ps_mem.req;
+assign mem_addr = ps_mem.addr | ps_mem_offset;
+assign mem_we = ps_mem.we;
+assign mem_wdata = ps_mem.wdata;
+assign mem_be = ps_mem.be;
 
-    //Req channel
-    assign m_axi_aw_addr = axi_lite_req.aw.addr | ps_mem_offset;
-    assign m_axi_aw_prot = axi_lite_req.aw.prot;
-    assign m_axi_aw_valid = axi_lite_req.aw_valid;
-    assign m_axi_w_data = axi_lite_req.w.data;
-    assign m_axi_w_strb = axi_lite_req.w.strb;
-    assign m_axi_w_valid = axi_lite_req.w_valid;
-    assign m_axi_b_ready = axi_lite_req.b_ready;
-    assign m_axi_ar_addr = axi_lite_req.ar.addr | ps_mem_offset;
-    assign m_axi_ar_prot = axi_lite_req.ar.prot;
-    assign m_axi_ar_valid = axi_lite_req.ar_valid;
-    assign m_axi_r_ready = axi_lite_req.r_ready;
-
-    //Resp channel
-    assign axi_lite_rsp.aw_ready = m_axi_aw_ready;
-    assign axi_lite_rsp.w_ready = m_axi_w_ready;
-    assign axi_lite_rsp.b.resp = m_axi_b_resp;
-    assign axi_lite_rsp.b_valid = m_axi_b_valid;
-    assign axi_lite_rsp.ar_ready = m_axi_ar_ready;
-    assign axi_lite_rsp.r.data = m_axi_r_data;
-    assign axi_lite_rsp.r.resp = m_axi_r_resp;
-    assign axi_lite_rsp.r_valid = m_axi_r_valid;
-
+assign ps_mem.gnt = mem_gnt;
+assign ps_mem.rsp_valid = mem_rsp_valid;
+assign ps_mem.rsp_rdata = mem_rsp_rdata;
+assign ps_mem.rsp_error = mem_rsp_error;
 
 endmodule
