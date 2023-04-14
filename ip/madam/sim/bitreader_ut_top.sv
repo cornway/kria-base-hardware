@@ -3,7 +3,7 @@
 
 `include "../synth/mcore_defs.svh"
 
-module ps_mem_test_top;
+module bitreader_ut_top;
 
 localparam DATA_WIDTH = 32;
 localparam ADDR_WIDTH = 32;
@@ -109,25 +109,42 @@ initial begin
     read_data = '0;
     wait(aresetn);
 
-    _attach_buffer(32'h271bd0);
+    // _attach_buffer(32'h271bd0);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _skip(8'd60);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+    // _skip(8'd12);
+    // _read_data(8'h6, read_data);
+    // _read_data(8'h6, read_data);
+
+    _attach_buffer(32'ha8f78);
+    _read_data(8'h8, read_data);
+    _read_data(8'h8, read_data);
+    _read_data(8'h6, read_data);
+    _read_data(8'h8, read_data);
+    _read_data(8'h6, read_data);
+    _read_data(8'h8, read_data);
     _read_data(8'h6, read_data);
     _read_data(8'h6, read_data);
-    _skip(8'd60);
     _read_data(8'h6, read_data);
     _read_data(8'h6, read_data);
     _read_data(8'h6, read_data);
     _read_data(8'h6, read_data);
     _read_data(8'h6, read_data);
     _read_data(8'h6, read_data);
-    _read_data(8'h6, read_data);
-    _read_data(8'h6, read_data);
-    _read_data(8'h6, read_data);
-    _read_data(8'h6, read_data);
-    _read_data(8'h6, read_data);
-    _read_data(8'h6, read_data);
-    _skip(8'd12);
-    _read_data(8'h6, read_data);
-    _read_data(8'h6, read_data);
+    _read_data(8'h8, read_data);
 
     #100;
     @(posedge aclk)
@@ -213,6 +230,12 @@ always_comb begin
         32'h271bf4: m00_axi_r_data_next = 32'h96ba35aa;
         32'h271bf8: m00_axi_r_data_next = 32'hbb75b2ab;
         32'h271bfc: m00_axi_r_data_next = 32'hf5968eb5;
+
+
+        32'ha8f78: m00_axi_r_data_next = 32'h2409f96;
+        32'ha8f7c: m00_axi_r_data_next = 32'ha47aebaa;
+        32'ha8f80: m00_axi_r_data_next = 32'hb9e387d8;
+        32'ha8f84: m00_axi_r_data_next = 32'h70000000;
 
 
         default: begin

@@ -70,7 +70,6 @@ logic [DATA_WIDTH-1:0] data_out_reg, data_out_reg_next;
 logic [DATA_WIDTH-1:0] bits_word_offset;
 logic [DATA_WIDTH-1:0] bits_word_offset_lr_reg, bits_word_offset_lr_next;
 logic [ADDR_WIDTH-1:0] mem_addr_aligned;
-logic [ADDR_WIDTH-1:0] mem_addr_aligned;
 logic [DATA_WIDTH-1:0] memory_rsp_rdata_next;
 logic [DATA_WIDTH-1:0] bit_skip_next;
 
