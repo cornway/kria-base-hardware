@@ -24,6 +24,8 @@ generate
     assign addr[0]  = m_if[0].addr;
     assign wdata[0] = m_if[0].wdata;
     assign be[0]    = m_if[0].be;
+    assign req[0]   = m_if[0].req;
+    assign we[0]    = m_if[0].we;
 
     for (i = 1; i < NUM_MASTERS; i++) begin
         assign addr[i]  = m_if[i].addr  | addr[i-1];

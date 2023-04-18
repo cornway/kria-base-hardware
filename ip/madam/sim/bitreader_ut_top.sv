@@ -176,6 +176,7 @@ xaxi_from_mem_wrapper #(.DATA_WIDTH(DATA_WIDTH),
 xaxi_from_mem_wrapper_inst (
     .aclk(aclk),
     .aresetn(aresetn),
+    .ps_mem_offset('0),
 
     .mem_req(ps_mem.req),
     .mem_addr(ps_mem.addr),

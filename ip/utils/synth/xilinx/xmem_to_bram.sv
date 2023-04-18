@@ -29,7 +29,9 @@ module xmem_to_bram #(
     output logic                      xmem_gnt,
     output logic                      xmem_rsp_valid,
     output logic [XDATA_WIDTH-1:0]     xmem_rsp_rdata,
-    output logic                      xmem_rsp_error
+    output logic                      xmem_rsp_error,
+
+    output wire [7:0]                   debug_out
 );
 
 localparam BRAM_ADDR_MASK = (1 << $clog2(DATA_WIDTH/8)) - 1;
@@ -120,5 +122,9 @@ always_ff @(posedge aclk, negedge aresetn) begin
         end
     end
 end
+
+assign debug_out[2:0] = mstate;
+assign debug_out[4:3] = rd_ready_wait_reg;
+assign debug_out[7:5] = '0;
 
 endmodule

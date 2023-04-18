@@ -93,7 +93,9 @@ module xmem_mux_wrapper #(
     input wire [DATA_WIDTH-1:0] s01_mem_rsp_rdata,
 
     (* X_INTERFACE_INFO = "xilinx.com:interface:xmem:1.0 S01_MEM rsp_error" *)
-    input wire s01_mem_rsp_error
+    input wire s01_mem_rsp_error,
+
+    output wire debug
 
 
 );
@@ -140,5 +142,7 @@ xmem_mux #(
 
     .slave_select(m00_mem_addr >= ADDR_MASK)
 );
+
+assign debug = m00_mem_addr >= ADDR_MASK;
 
 endmodule

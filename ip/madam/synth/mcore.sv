@@ -53,6 +53,7 @@ logic [ADDR_WIDTH-1:0] mr_addra_off;
 logic [ADDR_WIDTH-1:0] mr_reg_id;
 logic [DATA_WIDTH-1:0] mr_douta_reg;
 logic [DATA_WIDTH-1:0] pbsq_dout;
+logic [DATA_WIDTH-1:0] ps_mem_test_rsp_rdata_reg;
 
 assign ps_mem_offset_out = ps_mem_offset;
 assign mr_addra_off = mr_addra & (~M_ADDR_MASK);
@@ -175,7 +176,7 @@ always_ff @(posedge mr_clka) begin
                         mr_douta_reg <= ps_mem_test.addr;
                     end
                     32'h101: begin
-                        mr_douta_reg <= ps_mem_test.rsp_rdata;
+                        mr_douta_reg <= ps_mem_test_rsp_rdata_reg;
                     end
                     32'h102: begin
                         mr_douta_reg <= {'0, ps_mem_test.rsp_valid};
@@ -218,6 +219,13 @@ always_ff @( posedge mr_clka ) begin
         ps_mem_offset <= '0;
         bitreader_req <= '0;
         bitreader_aresetn <= '1;
+
+        ps_mem_test.wdata <= '0;
+        ps_mem_test.addr <= '0;
+        ps_mem_test.req <= '0;
+        ps_mem_test.we <= '0;
+        ps_mem_test.be <= '0;
+        ps_mem_test_rsp_rdata_reg <= '0;
     end else begin
         if (mr_ena && mr_wea) begin
             unique case (mr_addra & M_ADDR_MASK)
@@ -284,6 +292,7 @@ always_ff @( posedge mr_clka ) begin
             ps_mem_test.req <= '0;
             ps_mem_test.we <= '0;
             ps_mem_test.be <= '0;
+            ps_mem_test_rsp_rdata_reg <= ps_mem_test.rsp_rdata;
         end
     end
 end

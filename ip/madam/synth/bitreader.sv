@@ -112,9 +112,7 @@ always_ff @(posedge aclk) begin
 end
 
 always_comb begin
-    mem_req = '0;
     mem_we = '0;
-    mem_addr = '0;
     mem_be = '0;
     mem_wdata = '0;
 
@@ -182,8 +180,6 @@ always_comb begin
         end
 
         bstate_mem_read: begin
-            mem_req = '1;
-            mem_addr = mem_addr_aligned;
             if (mem_gnt) begin
                 b_state_next = bstate_mem_resp;
             end
@@ -194,6 +190,20 @@ always_comb begin
                 bitreader_struct_next.data_cache_valid = '1;
                 b_state_next = b_state_mem_read_state;
             end
+        end
+    endcase
+end
+
+always_comb begin
+    mem_req = '0;
+    mem_addr = '0;
+    case (b_state)
+        bstate_mem_read: begin
+            mem_req = '1;
+            mem_addr = mem_addr_aligned;
+        end
+        bstate_mem_resp: begin
+            mem_addr = mem_addr_aligned;
         end
     endcase
 end
