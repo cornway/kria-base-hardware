@@ -37,6 +37,7 @@ module mcore_top #(
     input wire [DATA_WIDTH-1:0] mem_rsp_rdata,
     input wire mem_rsp_error,
 
+    output wire [ADDR_WIDTH-1:0] ps_mem_offset_out,
     output wire [63:0] debug_port
 
 );
@@ -53,6 +54,7 @@ logic [ADDR_WIDTH-1:0] mr_reg_id;
 logic [DATA_WIDTH-1:0] mr_douta_reg;
 logic [DATA_WIDTH-1:0] pbsq_dout;
 
+assign ps_mem_offset_out = ps_mem_offset;
 assign mr_addra_off = mr_addra & (~M_ADDR_MASK);
 assign mr_reg_id = `ADDR_TO_REG_ID(mr_addra_off);
 assign mr_douta = mr_douta_reg;
@@ -62,6 +64,17 @@ mem_if #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH)
 ) ps_mem();
+
+mem_if #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) ps_mem_test();
+
+mem_if #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) ps_mem_out();
+
 
 mcore_t mcore;
 integer i;
@@ -158,6 +171,15 @@ always_ff @(posedge mr_clka) begin
                     32'h4: begin
                         mr_douta_reg <= bitreader_offset;
                     end
+                    32'h100: begin
+                        mr_douta_reg <= ps_mem_test.addr;
+                    end
+                    32'h101: begin
+                        mr_douta_reg <= ps_mem_test.rsp_rdata;
+                    end
+                    32'h102: begin
+                        mr_douta_reg <= {'0, ps_mem_test.rsp_valid};
+                    end
                 default: begin
                     mr_douta_reg <= '0;
                 end
@@ -223,6 +245,25 @@ always_ff @( posedge mr_clka ) begin
                             bitreader_bitrate <= '0;
                             bitreader_bitskip <= '0;
                         end
+                        32'h100: begin
+                            ps_mem_test.addr <= mr_dina;
+                        end
+                        32'h101: begin
+                            ps_mem_test.wdata <= mr_dina;
+                        end
+                        32'h102: begin
+                            ps_mem_test.req = '1;
+                            ps_mem_test.we = mr_dina[0];
+                            ps_mem_test.be = '1;
+                        end
+                        32'h103: begin
+                            ps_mem_test.wdata <= '0;
+                            ps_mem_test.addr <= '0;
+                            ps_mem_test.req <= '0;
+                            ps_mem_test.we <= '0;
+                            ps_mem_test.be <= '0;
+                        end
+
                         default: begin
                         end
                     endcase
@@ -236,6 +277,13 @@ always_ff @( posedge mr_clka ) begin
         end
         if (!bitreader_aresetn) begin
             bitreader_aresetn <= '1;
+        end
+        if (ps_mem_test.rsp_valid || (ps_mem_test.we && ps_mem_test.gnt)) begin
+            ps_mem_test.wdata <= '0;
+            ps_mem_test.addr <= '0;
+            ps_mem_test.req <= '0;
+            ps_mem_test.we <= '0;
+            ps_mem_test.be <= '0;
         end
     end
 end
@@ -269,15 +317,26 @@ bitreader #(.DATA_WIDTH(DATA_WIDTH),
             );
 
 
-assign mem_req = ps_mem.req;
-assign mem_addr = ps_mem.addr | ps_mem_offset;
-assign mem_we = ps_mem.we;
-assign mem_wdata = ps_mem.wdata;
-assign mem_be = ps_mem.be;
+assign mem_req = ps_mem_out.req;
+assign mem_addr = ps_mem_out.addr;
+assign mem_we = ps_mem_out.we;
+assign mem_wdata = ps_mem_out.wdata;
+assign mem_be = ps_mem_out.be;
 
-assign ps_mem.gnt = mem_gnt;
-assign ps_mem.rsp_valid = mem_rsp_valid;
-assign ps_mem.rsp_rdata = mem_rsp_rdata;
-assign ps_mem.rsp_error = mem_rsp_error;
+assign ps_mem_out.gnt = mem_gnt;
+assign ps_mem_out.rsp_valid = mem_rsp_valid;
+assign ps_mem_out.rsp_rdata = mem_rsp_rdata;
+assign ps_mem_out.rsp_error = mem_rsp_error;
+
+
+xmem_cross_or #(
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .DATA_WIDTH(DATA_WIDTH),
+    .NUM_MASTERS(2)
+) xmem_cross_or_inst (
+    .m_if( '{ps_mem, ps_mem_test} ),
+
+    .s_if(ps_mem_out)
+);
 
 endmodule

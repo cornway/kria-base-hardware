@@ -60,6 +60,8 @@ module mcore_top_wrapper #(
     (* X_INTERFACE_INFO = "xilinx.com:interface:xmem:1.0 MEM rsp_error" *)
     input wire mem_rsp_error,
 
+    output wire [ADDR_WIDTH-1:0] ps_mem_offset_out,
+
     output wire [63:0] debug_port
 
 );
@@ -89,9 +91,9 @@ mcore_top #(.DATA_WIDTH(DATA_WIDTH),
                 .mem_rsp_rdata(mem_rsp_rdata),
                 .mem_rsp_error(mem_rsp_error),
 
+                .ps_mem_offset_out(ps_mem_offset_out),
 
-    .debug_port(debug_port)
-
+                .debug_port(debug_port)
             );
 
 endmodule
