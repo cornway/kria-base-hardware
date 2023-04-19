@@ -4,15 +4,13 @@ module xmem_to_bram_wrapper #(
     parameter XADDR_WIDTH = 32'd32,
 
     parameter DATA_WIDTH = 32'd128,
-    parameter ADDR_WIDTH = 32'd128,
-    parameter BRAM_READ_LATENCY = 2
+    parameter ADDR_WIDTH = 32'd32,
+    parameter BRAM_READ_LATENCY = 8
 ) (
     input wire aclk,
     input wire aresetn,
 
     //bram
-    (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME BRAM, MEM_ECC NONE, MASTER_TYPE BRAM_CTRL, READ_WRITE_MODE READ_WRITE, READ_LATENCY 2" *)
-
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM CLK" *)
     output wire clka,
 
@@ -45,10 +43,10 @@ module xmem_to_bram_wrapper #(
     input wire xmem_we,
 
     (* X_INTERFACE_INFO = "xilinx.com:interface:xmem:1.0 MEM wdata" *)
-    input wire [DATA_WIDTH-1:0] xmem_wdata,
+    input wire [XDATA_WIDTH-1:0] xmem_wdata,
 
     (* X_INTERFACE_INFO = "xilinx.com:interface:xmem:1.0 MEM be" *)
-    input wire [DATA_WIDTH/8-1:0] xmem_be,
+    input wire [XDATA_WIDTH/8-1:0] xmem_be,
 
     (* X_INTERFACE_INFO = "xilinx.com:interface:xmem:1.0 MEM gnt" *)
     output wire xmem_gnt,
@@ -57,7 +55,7 @@ module xmem_to_bram_wrapper #(
     output wire xmem_rsp_valid,
 
     (* X_INTERFACE_INFO = "xilinx.com:interface:xmem:1.0 MEM rsp_rdata" *)
-    output wire [DATA_WIDTH-1:0] xmem_rsp_rdata,
+    output wire [XDATA_WIDTH-1:0] xmem_rsp_rdata,
 
     (* X_INTERFACE_INFO = "xilinx.com:interface:xmem:1.0 MEM rsp_error" *)
     output wire xmem_rsp_error,

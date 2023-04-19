@@ -3,7 +3,7 @@
 module xmem_mux_wrapper #(
     parameter DATA_WIDTH = 32'd32,
     parameter ADDR_WIDTH = 32'd32,
-    parameter ADDR_MASK = 32'h100000
+    parameter ADDR_OFFSET = 32'h100000
 ) (
     input wire alck,
     input wire aresetn,
@@ -97,7 +97,6 @@ module xmem_mux_wrapper #(
 
     output wire debug
 
-
 );
 
 xmem_mux #(
@@ -109,7 +108,7 @@ xmem_mux #(
     .aresetn(aresetn),
 
     .m00_mem_req(m00_mem_req),
-    .m00_mem_addr(m00_mem_addr >= ADDR_MASK ? m00_mem_addr - ADDR_MASK : m00_mem_addr),
+    .m00_mem_addr(m00_mem_addr >= ADDR_OFFSET ? m00_mem_addr - ADDR_OFFSET : m00_mem_addr),
     .m00_mem_we(m00_mem_we),
     .m00_mem_wdata(m00_mem_wdata),
     .m00_mem_be(m00_mem_be),
@@ -140,9 +139,9 @@ xmem_mux #(
     .s01_mem_rsp_rdata(s01_mem_rsp_rdata),
     .s01_mem_rsp_error(s00_mem_rsp_error),
 
-    .slave_select(m00_mem_addr >= ADDR_MASK)
+    .slave_select(m00_mem_addr >= ADDR_OFFSET)
 );
 
-assign debug = m00_mem_addr >= ADDR_MASK;
+assign debug = m00_mem_addr >= ADDR_OFFSET;
 
 endmodule

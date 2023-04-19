@@ -8,9 +8,9 @@ module xmem_cross_or #(
     input wire aclk,
     input wire aresetn,
 
-    mem_if m_if[NUM_MASTERS],
+    mem_if.master m_if[NUM_MASTERS],
 
-    mem_if s_if
+    mem_if.slave s_if
 );
 
 logic [NUM_MASTERS-1:0] req;

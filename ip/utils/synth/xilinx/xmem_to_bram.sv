@@ -37,8 +37,9 @@ module xmem_to_bram #(
 localparam BRAM_ADDR_MASK = (1 << $clog2(DATA_WIDTH/8)) - 1;
 localparam XDATA_MASK = (1 << XDATA_WIDTH) - 1;
 
-logic [$clog2(BRAM_READ_LATENCY)-1:0] rd_ready_wait_reg, rd_ready_wait_next;
-logic [DATA_WIDTH-1:0] bram_douta_reg[BRAM_READ_LATENCY];
+typedef logic [$clog2(BRAM_READ_LATENCY)-1:0] latency_t;
+
+latency_t rd_ready_wait_reg, rd_ready_wait_next;
 
 typedef enum logic [2:0] {
     m_state_idle,
@@ -58,13 +59,13 @@ generate
     if (DATA_WIDTH / XDATA_WIDTH > 1) begin
 
         assign bram_dina            = xmem_wdata << (xmem_lsb_msb_sel * XDATA_WIDTH);
-        assign xmem_rsp_rdata       = (bram_douta_reg[BRAM_READ_LATENCY-1] >> (xmem_lsb_msb_sel * XDATA_WIDTH)) & XDATA_MASK;
+        assign xmem_rsp_rdata       = (bram_douta >> (xmem_lsb_msb_sel * XDATA_WIDTH)) & XDATA_MASK;
         assign bram_wea             = xmem_we ? (xmem_be << (xmem_lsb_msb_sel * (XDATA_WIDTH/8))) : '0;
 
     end else begin
 
         assign bram_dina        = xmem_wdata;
-        assign xmem_rsp_rdata   = bram_douta;
+        assign xmem_rsp_rdata = bram_douta;
         assign bram_wea         = xmem_we ? xmem_be : '0;
 
     end
@@ -84,7 +85,7 @@ always_comb begin
             if (xmem_req) begin
                 bram_ena = '1;
                 if (!xmem_we) begin
-                    rd_ready_wait_next = '1;
+                    rd_ready_wait_next = latency_t'(BRAM_READ_LATENCY) - 1'b1;
                     mstate_next = m_state_read;
                 end else begin
                     xmem_rsp_valid = '1;
@@ -109,17 +110,9 @@ always_ff @(posedge aclk, negedge aresetn) begin
     if (!aresetn) begin
         mstate <= m_state_idle;
         rd_ready_wait_reg <= '0;
-        for (i = 0; i < BRAM_READ_LATENCY; i++) begin
-            bram_douta_reg[i] <= '0;
-        end
     end else begin
         mstate <= mstate_next;
         rd_ready_wait_reg <= rd_ready_wait_next;
-
-        bram_douta_reg[0] <= bram_douta;
-        for (i = 1; i < BRAM_READ_LATENCY; i++) begin
-            bram_douta_reg[i] <= bram_douta_reg[i-1];
-        end
     end
 end
 

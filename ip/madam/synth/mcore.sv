@@ -8,8 +8,6 @@ module mcore_top #(
     parameter DATA_WIDTH = 32'd32,
     parameter ADDR_WIDTH = 32'd32,
 
-    AXI_ADDR_WIDTH = 32'd32,
-    AXI_DATA_WIDTH = 32'd32,
     AXI_ID_WIDTH = 1,
     AXI_USER_WIDTH = 1
 ) (
@@ -101,7 +99,7 @@ always_ff @( posedge mr_clka ) begin
             M_PBUSQ_ADDR: begin
                 for (i = 0; i < DATA_WIDTH/8; i++) begin
                     if (mr_wea[i])
-                        mcore.pbus_queue[mr_reg_id + i] <= byte_t'(mr_dina >> (i * 8));
+                        mcore.pbus_queue[mr_addra_off + i] <= byte_t'(mr_dina >> (i * 8));
                 end
             end
             M_PLUT_ADDR: begin
@@ -260,9 +258,9 @@ always_ff @( posedge mr_clka ) begin
                             ps_mem_test.wdata <= mr_dina;
                         end
                         32'h102: begin
-                            ps_mem_test.req = '1;
-                            ps_mem_test.we = mr_dina[0];
-                            ps_mem_test.be = '1;
+                            ps_mem_test.req <= '1;
+                            ps_mem_test.we <= mr_dina[0];
+                            ps_mem_test.be <= '1;
                         end
                         32'h103: begin
                             ps_mem_test.wdata <= '0;
@@ -286,7 +284,7 @@ always_ff @( posedge mr_clka ) begin
         if (!bitreader_aresetn) begin
             bitreader_aresetn <= '1;
         end
-        if (ps_mem_test.rsp_valid || (ps_mem_test.we && ps_mem_test.gnt)) begin
+        if (ps_mem_test.rsp_valid) begin
             ps_mem_test.wdata <= '0;
             ps_mem_test.addr <= '0;
             ps_mem_test.req <= '0;
@@ -343,9 +341,11 @@ xmem_cross_or #(
     .DATA_WIDTH(DATA_WIDTH),
     .NUM_MASTERS(2)
 ) xmem_cross_or_inst (
-    .m_if( '{ps_mem, ps_mem_test} ),
+    .m_if( '{   ps_mem.master,
+                ps_mem_test.master
+            } ),
 
-    .s_if(ps_mem_out)
+    .s_if(ps_mem_out.slave)
 );
 
 endmodule

@@ -25,13 +25,13 @@ interface mem_if #(
     logic rsp_error;
 
     modport master (
-        input rsp_valid, rsp_rdata, rsp_error, gnt,
-        output req, addr, wdata, be, we
+        output rsp_valid, rsp_rdata, rsp_error, gnt,
+        input req, addr, wdata, be, we
     );
 
     modport slave (
-        output rsp_valid, rsp_rdata, rsp_error, gnt,
-        input req, addr, wdata, be, we
+        input rsp_valid, rsp_rdata, rsp_error, gnt,
+        output req, addr, wdata, be, we
     );
 
 endinterface

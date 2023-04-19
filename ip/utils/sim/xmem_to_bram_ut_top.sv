@@ -34,6 +34,7 @@ logic                      xmem_gnt;
 logic                      xmem_rsp_valid;
 logic [XDATA_WIDTH-1:0]     xmem_rsp_rdata;
 logic                      xmem_rsp_error;
+logic [7:0]                 debug_out;
 
 
 xmem_to_bram #(
