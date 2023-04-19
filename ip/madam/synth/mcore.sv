@@ -2,6 +2,7 @@
 
 `include "bitreader_types.svh"
 `include "mcore_defs.svh"
+`include "pdec_defs.svh"
 `include "typedef.svh"
 
 module mcore_top #(
@@ -170,6 +171,14 @@ always_ff @(posedge mr_clka) begin
                     32'h4: begin
                         mr_douta_reg <= bitreader_offset;
                     end
+                    //PDEC
+                    32'h24: begin
+                        mr_douta_reg <= {'0, pdec_amv, pdec_pres};
+                    end
+                    32'h25: begin
+                        mr_douta_reg <= {'0, pdec_transparent};
+                    end
+                    //Test Memory
                     32'h100: begin
                         mr_douta_reg <= ps_mem_test.addr;
                     end
@@ -224,6 +233,7 @@ always_ff @( posedge mr_clka ) begin
         ps_mem_test.we <= '0;
         ps_mem_test.be <= '0;
         ps_mem_test_rsp_rdata_reg <= '0;
+        pdec_data <= '{default: '0};
     end else begin
         if (mr_ena && mr_wea) begin
             unique case (mr_addra & M_ADDR_MASK)
@@ -251,6 +261,17 @@ always_ff @( posedge mr_clka ) begin
                             bitreader_bitrate <= '0;
                             bitreader_bitskip <= '0;
                         end
+                        //PDEC
+                        32'h20: begin
+                            pdec_data.plutaCCBbits <= mr_dina;
+                        end
+                        32'h21: begin
+                            pdec_data.pixelBitsMask <= mr_dina;
+                        end
+                        32'h22: begin
+                            pdec_data.tmask <= mr_dina[0];
+                        end
+
                         32'h100: begin
                             ps_mem_test.addr <= mr_dina;
                         end
@@ -323,6 +344,25 @@ bitreader #(.DATA_WIDTH(DATA_WIDTH),
                 .debug_port(debug_port)
             );
 
+pdec pdec_data;
+logic pdec_transparent;
+logic [15:0] pdec_amv;
+logic [15:0] pdec_pres;
+
+pdec #(
+) pdec_inst (
+    .aclk(aclk),
+    .aresetn(aresetn),
+    .pixel_in(bitreader_data_out),
+    .pdec_in(pdec_data),
+    .PRE0(mcore.cel_vars.var_unsigned[PRE0_ID]),
+    .PLUT(mcore.plut),
+    .transparent(pdec_transparent),
+    .amv_out(pdec_amv),
+    .pres_out(pdec_pres),
+    .ap_busy(),
+    .ap_data_ready()
+);
 
 assign mem_req = ps_mem_out.req;
 assign mem_addr = ps_mem_out.addr;
