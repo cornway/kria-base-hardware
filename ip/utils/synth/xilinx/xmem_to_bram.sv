@@ -34,8 +34,15 @@ module xmem_to_bram #(
     output wire [7:0]                   debug_out
 );
 
-localparam BRAM_ADDR_MASK = (1 << $clog2(DATA_WIDTH/8)) - 1;
-localparam XDATA_MASK = (1 << XDATA_WIDTH) - 1;
+mem_if #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) s_if();
+
+mem_if #(
+    .DATA_WIDTH(XDATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) m_if();
 
 typedef logic [$clog2(BRAM_READ_LATENCY)-1:0] latency_t;
 
@@ -48,57 +55,24 @@ typedef enum logic [2:0] {
 
 mstate_e mstate, mstate_next;
 
-assign xmem_gnt = xmem_req;
-assign bram_addra = xmem_addr & ~BRAM_ADDR_MASK;
-
-wire [ $clog2(DATA_WIDTH/8) - $clog2(XDATA_WIDTH/8) - 1 : 0 ] xmem_lsb_msb_sel;
-
-assign xmem_lsb_msb_sel = xmem_addr[$clog2(DATA_WIDTH/8) -1 : $clog2(XDATA_WIDTH/8)];
-
-generate
-    if (DATA_WIDTH / XDATA_WIDTH > 1) begin
-
-        assign bram_dina            = xmem_wdata << (xmem_lsb_msb_sel * XDATA_WIDTH);
-        assign xmem_rsp_rdata       = (bram_douta >> (xmem_lsb_msb_sel * XDATA_WIDTH)) & XDATA_MASK;
-        assign bram_wea             = xmem_we ? (xmem_be << (xmem_lsb_msb_sel * (XDATA_WIDTH/8))) : '0;
-
-    end else begin
-
-        assign bram_dina        = xmem_wdata;
-        assign xmem_rsp_rdata = bram_douta;
-        assign bram_wea         = xmem_we ? xmem_be : '0;
-
-    end
-endgenerate
-
 always_comb begin
     rd_ready_wait_next = rd_ready_wait_reg;
     mstate_next = mstate;
 
-    xmem_rsp_valid = '0;
-    xmem_rsp_error = '0;
-
-    bram_ena = '0;
-
     case (mstate)
         m_state_idle: begin
-            if (xmem_req) begin
-                bram_ena = '1;
-                if (!xmem_we) begin
+            if (s_if.req) begin
+                if (!s_if.we) begin
                     rd_ready_wait_next = latency_t'(BRAM_READ_LATENCY) - 1'b1;
                     mstate_next = m_state_read;
-                end else begin
-                    xmem_rsp_valid = '1;
                 end
             end
         end
 
         m_state_read: begin
-            bram_ena = '1;
             if (rd_ready_wait_reg) begin
                 rd_ready_wait_next = rd_ready_wait_reg - 1'b1;
             end else begin
-                xmem_rsp_valid = '1;
                 mstate_next = m_state_idle;
             end
         end
@@ -119,5 +93,59 @@ end
 assign debug_out[2:0] = mstate;
 assign debug_out[4:3] = rd_ready_wait_reg;
 assign debug_out[7:5] = '0;
+
+
+assign bram_addra = s_if.addr;
+assign bram_dina = s_if.wdata;
+assign bram_wea = s_if.we ? s_if.be : '0;
+assign s_if.rsp_rdata = bram_douta;
+assign s_if.rsp_error  = '0;
+
+assign s_if.gnt = m_if.req;
+
+assign m_if.req = xmem_req;
+assign m_if.addr = xmem_addr;
+assign m_if.be = xmem_be;
+assign m_if.we = xmem_we;
+assign m_if.wdata = xmem_wdata;
+
+assign xmem_gnt = m_if.gnt;
+assign xmem_rsp_valid = m_if.rsp_valid;
+assign xmem_rsp_rdata = m_if.rsp_rdata;
+assign xmem_rsp_error = m_if.rsp_error;
+
+always_comb begin
+    bram_ena = '0;
+    s_if.rsp_valid = '0;
+
+    case (mstate)
+        m_state_idle: begin
+            if (s_if.req) begin
+                bram_ena = '1;
+                if (xmem_we) begin
+                    s_if.rsp_valid = '1;
+                end
+            end
+        end
+
+        m_state_read: begin
+            if (!rd_ready_wait_reg) begin
+                s_if.rsp_valid = '1;
+            end
+        end
+    endcase
+end
+
+xmem_wconvert #(
+    .DATA_WIDTH_IN(XDATA_WIDTH),
+    .DATA_WIDTH_OUT(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) xmem_wconvert_inst (
+
+    .s_if(s_if.slave),
+    .m_if(m_if.master)
+);
+
+
 
 endmodule
