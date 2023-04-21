@@ -34,4 +34,9 @@ interface mem_if #(
         output req, addr, wdata, be, we
     );
 
+    modport monitor (
+        input rsp_valid, rsp_rdata, rsp_error, gnt,
+        req, addr, wdata, be, we
+    );
+
 endinterface

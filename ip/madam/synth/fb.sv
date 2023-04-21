@@ -13,13 +13,7 @@ module frame_buffer #(
     mem_if.slave memory,
     input mcore_t mcore,
 
-    input pixel_t pixel,
-    input uint16_t x,
-    input uint16_t y,
-    input wire req,
-
-    output logic resp,
-    output logic busy
+    fb_if.master framebuffer_if
 );
 
 mem_if #(
@@ -60,10 +54,10 @@ always_comb begin
 
     case (fb_state)
         fb_state_idle: begin
-            if (req) begin
-                yw_next = (y >> 1) * mcore.wmod;
-                y1_next = (y & 1) << 1;
-                x_next = x << 2;
+            if (framebuffer_if.req) begin
+                yw_next = (framebuffer_if.y >> 1) * mcore.wmod;
+                y1_next = (framebuffer_if.y & 1) << 1;
+                x_next = framebuffer_if.x << 2;
                 fb_state_next = fb_state_calc_addr_1;
             end
         end
@@ -80,7 +74,7 @@ always_comb begin
             pix_if.we = '1;
             pix_if.be = '1;
             pix_if.addr = addr_reg;
-            pix_if.wdata = pixel;
+            pix_if.wdata = framebuffer_if.pixel;
             if (pix_if.gnt) begin
                 resp_next = '1;
                 fb_state_next = fb_state_idle;
@@ -107,9 +101,8 @@ always_ff @(posedge aclk, negedge aresetn) begin
     end
 end
 
-assign addr_dbg = addr_reg;
-assign busy = fb_state != fb_state_idle;
-assign resp = resp_next;
+assign framebuffer_if.busy = fb_state != fb_state_idle;
+assign framebuffer_if.resp = resp_next;
 
 xmem_wconvert #(
     .DATA_WIDTH_IN(PIXEL_WIDTH),

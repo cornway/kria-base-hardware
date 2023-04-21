@@ -158,16 +158,16 @@ always_ff @(posedge mr_clka) begin
                         mr_douta_reg <= ps_mem_offset;
                     end
                     32'h1: begin
-                        mr_douta_reg <= bitreader_attach_addr;
+                        mr_douta_reg <= br_if.addr;
                     end
                     32'h2: begin
-                        mr_douta_reg <= bitreader_busy;
+                        mr_douta_reg <= br_if.busy;
                     end
                     32'h3: begin
-                        mr_douta_reg <= bitreader_data_out;
+                        mr_douta_reg <= br_if.data;
                     end
                     32'h4: begin
-                        mr_douta_reg <= bitreader_offset;
+                        mr_douta_reg <= br_if.offset;
                     end
                     //PDEC
                     32'h24: begin
@@ -179,7 +179,7 @@ always_ff @(posedge mr_clka) begin
 
                     //FB
                     32'h41: begin
-                        mr_douta_reg <=  {'0, fb_busy, fb_pixel};
+                        mr_douta_reg <=  {'0, framebuffer_if.busy, framebuffer_if.pixel};
                     end
                     //Test Memory
                     32'h100: begin
@@ -215,19 +215,12 @@ endgenerate
 
 //Bitreader/memory
 
-logic [ADDR_WIDTH-1:0] bitreader_attach_addr;
-logic [DATA_WIDTH-1:0] bitreader_bitrate;
-logic [DATA_WIDTH-1:0] bitreader_bitskip;
-logic [DATA_WIDTH-1:0] bitreader_data_out;
-logic [ADDR_WIDTH-1:0] bitreader_offset;
 logic bitreader_aresetn;
-bitreader_op_e bitreader_op;
-logic bitreader_req, bitreader_busy, bitreader_data_ready;
 
 always_ff @( posedge mr_clka ) begin
     if (!aresetn) begin
         ps_mem_offset <= '0;
-        bitreader_req <= '0;
+        br_if.req <= '0;
         bitreader_aresetn <= '1;
 
         ps_mem_test.wdata <= '0;
@@ -246,23 +239,23 @@ always_ff @( posedge mr_clka ) begin
                             ps_mem_offset <= mr_dina;
                         end
                         32'h1: begin
-                            bitreader_req <= '1;
-                            bitreader_attach_addr <= mr_dina;
-                            bitreader_op <= BR_ATTACH;
+                            br_if.req <= '1;
+                            br_if.addr <= mr_dina;
+                            br_if.op <= BR_ATTACH;
                         end
                         32'h2: begin
-                            bitreader_req <= '1;
-                            bitreader_op <= bitreader_op_e'(mr_dina[1:0]);
-                            bitreader_bitrate <= mr_dina[15:8];
-                            bitreader_bitskip <= mr_dina[31:16];
+                            br_if.req <= '1;
+                            br_if.op <= bitreader_op_e'(mr_dina[1:0]);
+                            br_if.bitrate <= mr_dina[15:8];
+                            br_if.bitskip <= mr_dina[31:16];
                         end
                         32'h3: begin
                             bitreader_aresetn <= '0;
-                            bitreader_attach_addr <= '0;
-                            bitreader_req <= '0;
-                            bitreader_op <= BR_ATTACH;
-                            bitreader_bitrate <= '0;
-                            bitreader_bitskip <= '0;
+                            br_if.addr <= '0;
+                            br_if.req <= '0;
+                            br_if.op <= BR_ATTACH;
+                            br_if.bitrate <= '0;
+                            br_if.bitskip <= '0;
                         end
                         //PDEC
                         32'h20: begin
@@ -276,12 +269,12 @@ always_ff @( posedge mr_clka ) begin
                         end
 
                         32'h40: begin
-                            fb_x <= mr_dina[15:0];
-                            fb_y <= mr_dina[31:16];
+                            framebuffer_if.x <= mr_dina[15:0];
+                            framebuffer_if.y <= mr_dina[31:16];
                         end
                         32'h41: begin
-                            fb_pixel <= mr_dina[15:0];
-                            fb_req <= '1;
+                            framebuffer_if.pixel <= mr_dina[15:0];
+                            framebuffer_if.req <= '1;
                         end
                         32'h100: begin
                             ps_mem_test.addr <= mr_dina;
@@ -310,8 +303,8 @@ always_ff @( posedge mr_clka ) begin
                 end
             endcase
         end
-        if (bitreader_busy) begin
-            bitreader_req <= '0;
+        if (br_if.busy) begin
+            br_if.req <= '0;
         end
         if (!bitreader_aresetn) begin
             bitreader_aresetn <= '1;
@@ -324,11 +317,16 @@ always_ff @( posedge mr_clka ) begin
             ps_mem_test.be <= '0;
             ps_mem_test_rsp_rdata_reg <= ps_mem_test.rsp_rdata;
         end
-        if (fb_busy) begin
-            fb_req <= '0;
+        if (framebuffer_if.busy) begin
+            framebuffer_if.req <= '0;
         end
     end
 end
+
+bitreader_if #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) br_if();
 
 bitreader #(.DATA_WIDTH(DATA_WIDTH),
             .ADDR_WIDTH(ADDR_WIDTH))
@@ -336,25 +334,9 @@ bitreader #(.DATA_WIDTH(DATA_WIDTH),
                 .aclk(aclk),
                 .aresetn(aresetn && bitreader_aresetn),
 
-                .mem_req(ps_mem.req),
-                .mem_addr(ps_mem.addr),
-                .mem_we(ps_mem.we),
-                .mem_wdata(ps_mem.wdata),
-                .mem_be(ps_mem.be),
-                .mem_gnt(ps_mem.gnt),
-                .mem_rsp_valid(ps_mem.rsp_valid),
-                .mem_rsp_rdata(ps_mem.rsp_rdata),
-                .mem_rsp_error(ps_mem.rsp_error),
+                .memory(ps_mem.slave),
+                .br_if(br_if.master),
 
-                .addr_in(bitreader_attach_addr),
-                .bitrate_in(bitreader_bitrate),
-                .bitskip_in(bitreader_bitskip),
-                .req(bitreader_req),
-                .op(bitreader_op),
-                .ap_busy(bitreader_busy),
-                .ap_data_ready(bitreader_data_ready),
-                .data_out(bitreader_data_out),
-                .offset_out(bitreader_offset),
                 .debug_port(debug_port)
             );
 
@@ -367,7 +349,7 @@ pdec #(
 ) pdec_inst (
     .aclk(aclk),
     .aresetn(aresetn),
-    .pixel_in(bitreader_data_out),
+    .pixel_in(br_if.data),
     .pdec_in(pdec_data),
     .mcore(mcore),
     .transparent(pdec_transparent),
@@ -382,9 +364,7 @@ mem_if #(
     .ADDR_WIDTH(ADDR_WIDTH)
 ) fb_mem();
 
-uint16_t fb_pixel;
-uint16_t fb_x, fb_y;
-logic fb_req, fb_resp, fb_busy;
+fb_if framebuffer_if();
 
 frame_buffer #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -395,12 +375,7 @@ frame_buffer #(
     .aresetn(aresetn),
     .memory(fb_mem.slave),
     .mcore(mcore),
-    .pixel(fb_pixel),
-    .x(fb_x),
-    .y(fb_y),
-    .req(fb_req),
-    .resp(fb_resp),
-    .busy(fb_busy)
+    .framebuffer_if(framebuffer_if.master)
 );
 
 assign mem_req = ps_mem_out.req;
