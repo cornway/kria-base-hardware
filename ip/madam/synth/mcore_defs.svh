@@ -4,7 +4,18 @@
 
 typedef logic signed [31:0] int32_t;
 typedef logic [31:0] uint32_t;
+typedef logic signed [32:0] int33_t;
+typedef logic [32:0] uint33_t;
+
+typedef logic signed [15:0] int16_t;
+typedef logic [15:0] uint16_t;
+
+typedef logic signed [7:0] int8_t;
+typedef logic [7:0] uint8_t;
+
 typedef logic [7:0] byte_t;
+
+typedef logic[15:0] pixel_t;
 
 parameter CEL_VARS_SUB_SIZE = 32'h80;
 
@@ -79,5 +90,8 @@ parameter PDATF_ID              = 10;
 parameter NCCBF_ID              = 11;
 parameter PXOR1_ID              = 12;
 parameter PXOR2_ID              = 13;
+
+
+parameter MREGS_FBTARGET_ID     = 32'h13c;
 
 `endif /*MCORE_DEFS_SVH*/

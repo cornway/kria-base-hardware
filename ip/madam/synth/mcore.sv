@@ -8,9 +8,7 @@
 module mcore_top #(
     parameter DATA_WIDTH = 32'd32,
     parameter ADDR_WIDTH = 32'd32,
-
-    AXI_ID_WIDTH = 1,
-    AXI_USER_WIDTH = 1
+    parameter PIXEL_WIDTH = 32'd16
 ) (
 
     input wire aclk,
@@ -178,6 +176,11 @@ always_ff @(posedge mr_clka) begin
                     32'h25: begin
                         mr_douta_reg <= {'0, pdec_transparent};
                     end
+
+                    //FB
+                    32'h41: begin
+                        mr_douta_reg <=  {'0, fb_busy, fb_pixel};
+                    end
                     //Test Memory
                     32'h100: begin
                         mr_douta_reg <= ps_mem_test.addr;
@@ -272,6 +275,14 @@ always_ff @( posedge mr_clka ) begin
                             pdec_data.tmask <= mr_dina[0];
                         end
 
+                        32'h40: begin
+                            fb_x <= mr_dina[15:0];
+                            fb_y <= mr_dina[31:16];
+                        end
+                        32'h41: begin
+                            fb_pixel <= mr_dina[15:0];
+                            fb_req <= '1;
+                        end
                         32'h100: begin
                             ps_mem_test.addr <= mr_dina;
                         end
@@ -312,6 +323,9 @@ always_ff @( posedge mr_clka ) begin
             ps_mem_test.we <= '0;
             ps_mem_test.be <= '0;
             ps_mem_test_rsp_rdata_reg <= ps_mem_test.rsp_rdata;
+        end
+        if (fb_busy) begin
+            fb_req <= '0;
         end
     end
 end
@@ -355,13 +369,38 @@ pdec #(
     .aresetn(aresetn),
     .pixel_in(bitreader_data_out),
     .pdec_in(pdec_data),
-    .PRE0(mcore.cel_vars.var_unsigned[PRE0_ID]),
-    .PLUT(mcore.plut),
+    .mcore(mcore),
     .transparent(pdec_transparent),
     .amv_out(pdec_amv),
     .pres_out(pdec_pres),
     .ap_busy(),
     .ap_data_ready()
+);
+
+mem_if #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) fb_mem();
+
+uint16_t fb_pixel;
+uint16_t fb_x, fb_y;
+logic fb_req, fb_resp, fb_busy;
+
+frame_buffer #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .PIXEL_WIDTH(PIXEL_WIDTH)
+) frame_buffer_inst (
+    .aclk(aclk),
+    .aresetn(aresetn),
+    .memory(fb_mem.slave),
+    .mcore(mcore),
+    .pixel(fb_pixel),
+    .x(fb_x),
+    .y(fb_y),
+    .req(fb_req),
+    .resp(fb_resp),
+    .busy(fb_busy)
 );
 
 assign mem_req = ps_mem_out.req;
@@ -379,10 +418,11 @@ assign ps_mem_out.rsp_error = mem_rsp_error;
 xmem_cross_or #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
-    .NUM_MASTERS(2)
+    .NUM_MASTERS(3)
 ) xmem_cross_or_inst (
     .m_if( '{   ps_mem.master,
-                ps_mem_test.master
+                ps_mem_test.master,
+                fb_mem.master
             } ),
 
     .s_if(ps_mem_out.slave)

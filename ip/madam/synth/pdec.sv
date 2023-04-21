@@ -3,6 +3,7 @@
 
 
 `include "pdec_defs.svh"
+`include "mcore_defs.svh"
 
 parameter PRE0_BPP_MASK = 32'h7;
 parameter PRE0_LINEAR = 32'h10;
@@ -13,15 +14,13 @@ module pdec #(
     input wire aclk,
     input wire aresetn,
 
-    input wire [15:0] pixel_in,
+    input uint16_t pixel_in,
     input pdec pdec_in,
-    input logic [31:0] PRE0,
-
-    input logic [15:0] PLUT [32],
+    input mcore_t mcore,
 
     output wire transparent,
-    output wire [15:0] amv_out,
-    output wire [15:0] pres_out,
+    output uint16_t amv_out,
+    output uint16_t pres_out,
 
 
     output wire ap_busy,
@@ -30,9 +29,12 @@ module pdec #(
 
 pdeco pix1;
 
-logic [15:0] amv_reg, amv_next;
-logic [15:0] pres_reg, pres_next;
+uint16_t amv_reg, amv_next;
+uint16_t pres_reg, pres_next;
 logic transparent_reg, transparent_next;
+uint32_t PRE0;
+
+assign PRE0 = mcore.cel_vars.var_unsigned[PRE0_ID];
 
 assign pix1.raw = pixel_in;
 
@@ -43,7 +45,7 @@ always_comb begin
 
     case(PRE0 & PRE0_BPP_MASK)
         3'h4: begin
-            pres_next = (PLUT[pix1.c6b.c] & 16'h7fff) | (pix1.c6b.pw << 15);
+            pres_next = (mcore.plut[pix1.c6b.c] & 16'h7fff) | (pix1.c6b.pw << 15);
             amv_next = 8'h49;
         end
         3'h5: begin
@@ -51,7 +53,7 @@ always_comb begin
                 pres_next = MAPu8b_func(pix1.raw & 8'hff);
                 amv_next = 8'h49;
             end else begin
-                pres_next = PLUT[pix1.c8b.c];
+                pres_next = mcore.plut[pix1.c8b.c];
                 amv_next = MAPc8bAMV_func(pix1.raw & 32'hff);
             end
         end
@@ -60,12 +62,12 @@ always_comb begin
                 pres_next = pix1.raw;
                 amv_next = 8'h49;
             end else begin
-                pres_next = (PLUT[pix1.c16b.c] & 16'h7fff) | pixel_in & 16'h8000;
+                pres_next = (mcore.plut[pix1.c16b.c] & 16'h7fff) | pixel_in & 16'h8000;
                 amv_next = MAPc16bAMV_func((pix1.raw >> 5) & 16'h1FF);
             end
         end
         default: begin
-            pres_next = PLUT[(pdec_in.plutaCCBbits + ((pix1.raw & pdec_in.pixelBitsMask) * 2)) >> 1];
+            pres_next = mcore.plut[(pdec_in.plutaCCBbits + ((pix1.raw & pdec_in.pixelBitsMask) * 2)) >> 1];
             amv_next = 8'h49;
         end
     endcase
