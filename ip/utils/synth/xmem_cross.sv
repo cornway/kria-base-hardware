@@ -52,3 +52,54 @@ generate
 endgenerate
 
 endmodule
+
+
+module xmem_cross_rr #(
+    parameter NUM_MASTERS = 2
+) (
+    input logic aclk,
+    input logic aresetn,
+
+    mem_if.master m_if[NUM_MASTERS],
+    mem_if.slave s_if
+);
+
+logic [NUM_MASTERS-1:0] req;
+logic [NUM_MASTERS-1:0] rel;
+logic [$clog2(NUM_MASTERS)-1:0] select;
+logic select_valid;
+
+genvar i;
+generate
+for (i = 0; i < NUM_MASTERS; i++) begin
+    assign req[i] = m_if[i].req;
+    assign rel[i] = m_if[i].rsp_valid;
+end
+endgenerate
+
+arbiter_RR #(
+    .NUM_MASTERS(NUM_MASTERS)
+) arbiter_RR_inst (
+    .aclk(aclk),
+    .aresetn(aresetn),
+
+    .req_in(req),
+    .gnt_out(),
+    .release_in(rel),
+    .select(select),
+    .select_valid(select_valid)
+);
+
+xmem_master_mux #(
+    .NUM_MASTERS(NUM_MASTERS)
+) xmem_master_mux_inst (
+    .aclk(aclk),
+    .aresetn(aresetn),
+    .select(select),
+
+    .m_if(m_if),
+    .s_if(s_if),
+    .select_valid(select_valid)
+);
+
+endmodule

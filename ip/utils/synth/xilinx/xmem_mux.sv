@@ -65,4 +65,53 @@ assign s01_mem_``_sig = slave_select ? m00_mem_``_sig : '0;
 `_S_ASSIGN(wdata);
 `_S_ASSIGN(be);
 
+`undef _M_ASSIGN
+`undef _S_ASSIGN
+
+endmodule
+
+
+module xmem_master_mux #(
+    parameter NUM_MASTERS = 2
+) (
+    input wire aclk,
+    input wire aresetn,
+
+    input wire [$clog2(NUM_MASTERS)-1:0] select,
+    input wire select_valid,
+
+    mem_if.master m_if[NUM_MASTERS],
+
+    mem_if.slave s_if
+);
+
+`define _M_ASSIGN(_sig) \
+assign m_if[i].``_sig = i == select ? s_if.``_sig : '0;
+
+`define _S_ASSIGN(_sig) \
+assign s_if.``_sig = !select_valid ? '0 : i == select ? m_if[i].``_sig : s_if.``_sig;
+
+genvar i;
+
+generate
+
+for (i = 0; i < NUM_MASTERS; i++) begin
+    `_M_ASSIGN(gnt);
+    `_M_ASSIGN(rsp_valid);
+    `_M_ASSIGN(rsp_rdata);
+    `_M_ASSIGN(rsp_error);
+
+    `_S_ASSIGN(req);
+    `_S_ASSIGN(addr);
+    `_S_ASSIGN(we);
+    `_S_ASSIGN(be);
+    `_S_ASSIGN(wdata);
+
+end
+
+endgenerate
+
+`undef _M_ASSIGN
+`undef _S_ASSIGN
+
 endmodule
