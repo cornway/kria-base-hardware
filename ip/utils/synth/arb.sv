@@ -6,11 +6,16 @@ module arbiter_RR #(
     input wire aclk,
     input wire aresetn,
 
+    /* Requestor's input, active high */
     input wire [NUM_MASTERS-1:0] req_in,
+    /* Grant outpu, active high */
     output wire [NUM_MASTERS-1:0] gnt_out,
 
+    /* Requestor's release input, active high; Must go high after bus is granted */
     input wire [NUM_MASTERS-1:0] release_in,
+    /* Master select output; usually this is mux input */
     output wire [$clog2(NUM_MASTERS)-1:0] select,
+    /* Master select valid, active high; Must be used to prevent unexpected bus access */
     output wire select_valid
 );
 

@@ -48,7 +48,6 @@ parameter M_ADDR_MASK = M_REGS_ADDR |
                         M_UTIL_ADDR |
                         M_CEL_VARS_ADDR;
 
-
 parameter HDDX1616_ID           = 0;
 parameter HDDY1616_ID           = 1;
 parameter HDX1616_ID            = 2;
@@ -93,5 +92,8 @@ parameter PXOR2_ID              = 13;
 
 
 parameter MREGS_FBTARGET_ID     = 32'h13c;
+
+`define HDX1616(_mcore) _mcore.cel_vars.var_signed[HDX1616_ID]
+`define HDY1616(_mcore) _mcore.cel_vars.var_signed[HDY1616_ID]
 
 `endif /*MCORE_DEFS_SVH*/

@@ -77,7 +77,10 @@ module xmem_master_mux #(
     input wire aclk,
     input wire aresetn,
 
+    /* Which master has access to the bus */
     input wire [$clog2(NUM_MASTERS)-1:0] select,
+
+    /* Indicates if select is valid, otherwise no one has access to thee bus */
     input wire select_valid,
 
     mem_if.master m_if[NUM_MASTERS],
@@ -85,6 +88,9 @@ module xmem_master_mux #(
     mem_if.slave s_if
 );
 
+/* Note: select_valid is not used here, in order to let ongoing operations complete (receive response from the bus)
+    So rsp* signals is broadcasted in this case
+*/
 `define _M_ASSIGN(_sig) \
 assign m_if[i].``_sig = i == select ? s_if.``_sig : '0;
 
