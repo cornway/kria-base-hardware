@@ -39,7 +39,6 @@ assign pix1.raw = pixel_in;
 always_comb begin
     amv_next = amv_reg;
     pres_next = pres_reg;
-    transparent_next = transparent_reg;
 
     case(PRE0 & PRE0_BPP_MASK)
         3'h4: begin

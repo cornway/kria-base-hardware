@@ -206,3 +206,53 @@ xmem_cross_rr #(
 );
 
 endmodule
+
+
+module frame_buffer_wrapper #(
+    parameter  DATA_WIDTH= 32'd32,
+    parameter ADDR_WIDTH = 32'd32,
+    parameter PIXEL_WIDTH = 32'd16,
+    parameter PIPE_LEN = 32'd4
+) (
+    input wire aclk,
+    input wire aresetn,
+
+    mem_if.slave memory,
+    input mcore_t mcore,
+
+    fb_if.master framebuffer_if
+);
+
+
+if (PIPE_LEN > 0) begin
+
+frame_buffer_piped #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .PIXEL_WIDTH(PIXEL_WIDTH),
+    .PIPE_LEN(PIPE_LEN)
+) frame_buffer_piped_inst (
+    .aclk(aclk),
+    .aresetn(aresetn),
+    .memory(memory),
+    .mcore(mcore),
+    .framebuffer_if(framebuffer_if)
+);
+
+end else begin
+
+frame_buffer #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .PIXEL_WIDTH(PIXEL_WIDTH)
+) frame_buffer_piped_inst (
+    .aclk(aclk),
+    .aresetn(aresetn),
+    .memory(memory),
+    .mcore(mcore),
+    .framebuffer_if(framebuffer_if)
+);
+
+end
+
+endmodule

@@ -122,12 +122,12 @@ end
 
 assign busy  = br_state != br_state_idle;
 
-frame_buffer_piped #(
+frame_buffer_wrapper #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH),
     .PIXEL_WIDTH(PIXEL_WIDTH),
     .PIPE_LEN(PIPE_LEN)
-) frame_buffer_piped_inst (
+) frame_buffer_wrapper_inst (
     .aclk(aclk),
     .aresetn(aresetn),
     .memory(memory),
