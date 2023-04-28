@@ -32,7 +32,7 @@ typedef struct {
 
 bitreader_struct_t bitreader_struct, bitreader_struct_next;
 
-typedef enum logic[4:0] { bstate_wait_req,
+typedef enum logic[7:0] { bstate_wait_req,
                         bstate_attach,
                         bstate_skip,
                         bstate_skip_invalidate,
@@ -181,27 +181,34 @@ always_comb begin
     endcase
 end
 
+logic data_ready;
+
 always_ff @(posedge aclk, negedge aresetn) begin
     if (!aresetn) begin
-        br_if.data_ready <= '0;
+        data_ready <= '0;
     end else begin
         case(b_state)
             bstate_wait_req: begin
-                br_if.data_ready <= '0;
+                data_ready <= '0;
             end
             bstate_read_1: begin
                 if (bitreader_struct.data_cache_valid && (bits_word_offset + br_if.bitrate < DATA_WIDTH)) begin
-                    br_if.data_ready <= '1;
+                    data_ready <= '1;
                 end
             end
             bstate_read_2: begin
-                br_if.data_ready <= '1;
+                data_ready <= '1;
             end
             default: begin
-                br_if.data_ready <= '0;
+                data_ready <= '0;
             end
         endcase
     end
+end
+
+always_ff @(posedge aclk) begin
+    //1 Clock latency to settle the output
+    br_if.data_ready <= data_ready;
 end
 
 `define REVERSE_BITS_MACRO(_bits, _input)   \
@@ -235,9 +242,16 @@ assign br_if.data = br_if.bitrate == 32'd24 ? reverse_data_u24 :
 assign br_if.busy = b_state != bstate_wait_req;
 
 assign debug_port[7] = br_if.busy;
-assign debug_port[6] = br_if.data_ready;
-assign debug_port[5] = '0;
-assign debug_port[4:0] = b_state;
+assign debug_port[4] = br_if.data_ready;
+assign debug_port[6:5] = '0;
+assign debug_port[3:0] = b_state == bstate_wait_req         ? 5'h0 :
+                        b_state == bstate_attach            ? 5'h1 :
+                        b_state == bstate_skip              ? 5'h2 :
+                        b_state == bstate_skip_invalidate   ? 5'h3 :
+                        b_state == bstate_read_1            ? 5'h4 :
+                        b_state == bstate_read_2            ? 5'h5 :
+                        b_state == bstate_mem_read          ? 5'h6 :
+                        b_state == bstate_mem_resp          ? 5'h7 : '0;
 
 `ifndef SYNTHESIS
 
