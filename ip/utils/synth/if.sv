@@ -86,3 +86,52 @@ interface mem_if_dv #(
     );
 
 endinterface
+
+interface bram_if #(
+    parameter DATA_WIDTH = 32'd32,
+    parameter ADDR_WIDTH = 32'd32
+) ();
+
+    logic [ADDR_WIDTH-1:0] addra;
+    logic [DATA_WIDTH-1:0] dina;
+    logic [DATA_WIDTH-1:0] douta;
+    logic ena;
+    logic [DATA_WIDTH/8-1:0] wea;
+
+    modport master (
+        output douta,
+        input dina, addra, ena, wea
+    );
+
+    modport slave (
+        output douta,
+        input dina, addra, ena, wea
+    );
+
+endinterface
+
+interface bram_if_dv #(
+    parameter DATA_WIDTH = 32'd32,
+    parameter ADDR_WIDTH = 32'd32
+) (
+    input wire aclk,
+    input wire aresetn
+);
+
+    logic [ADDR_WIDTH-1:0] addra;
+    logic [DATA_WIDTH-1:0] dina;
+    logic [DATA_WIDTH-1:0] douta;
+    logic ena;
+    logic [DATA_WIDTH/8-1:0] wea;
+
+    modport master (
+        output douta,
+        input dina, addra, ena, wea
+    );
+
+    modport slave (
+        output douta,
+        input dina, addra, ena, wea
+    );
+
+endinterface

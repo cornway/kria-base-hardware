@@ -124,26 +124,39 @@ task setup();
     xmem.rsp_error = '0;
     xmem.rsp_rdata = '0;
     xmem.gnt = '0;
+    ram = '{default: '0};
 endtask
+
+function automatic logic [DATA_WIDTH-1:0] _get_data_mask(input logic [DATA_WIDTH/8-1:0] be);
+    logic [DATA_WIDTH-1:0] mask = '0;
+    for (integer i  = 0; i < DATA_WIDTH/8; i++) begin
+        mask = mask | ({8{be[i]}} << (i * 8));
+    end
+    return mask;
+endfunction
 
 task automatic monitor ();
 
     automatic logic [ADDR_WIDTH-1:0] addr_w;
-
+    automatic logic [DATA_WIDTH-1:0] wdata_mask;
 
     cycle_start();
+
 
     addr_w = xmem.addr / (DATA_WIDTH/8);
     if (addr_w >= MEMORY_DEPTH) begin
         $fatal(0, "xmem.addr exceeds memory capacity!");
     end
 
-    $display("Xmemory addr_w = %x, xmem.we=%x xmem.wdata=%x", addr_w, xmem.we, xmem.wdata);
+    $display("Xmemory.monitor: addr = %x (words: %x), xmem.we=%x xmem.wdata=%x xmem.be=%x",
+                xmem.addr, addr_w, xmem.we, xmem.wdata, xmem.be);
 
     xmem.rsp_rdata = ram [addr_w];
-    if (xmem.we)
-        ram [addr_w] = xmem.wdata;
-
+    if (xmem.we) begin
+        wdata_mask = _get_data_mask(xmem.be);
+        ram [addr_w] = (xmem.wdata & wdata_mask) | (ram [addr_w] & ~wdata_mask);
+        $display("ram [addr_w] = %x", ram [addr_w]);
+    end
 
     xmem.gnt <= #TA '1;
 

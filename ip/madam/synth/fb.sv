@@ -60,7 +60,7 @@ always_comb begin
                 yw_next = (framebuffer_if.y >> 1) * mcore.wmod;
                 y1_next = (framebuffer_if.y & 1) << 1;
                 x_next = framebuffer_if.x << 2;
-                pixel_next <= framebuffer_if.pixel;
+                pixel_next = framebuffer_if.pixel;
                 fb_state_next = fb_state_calc_addr_1;
             end
         end

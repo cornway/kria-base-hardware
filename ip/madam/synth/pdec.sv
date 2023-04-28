@@ -14,6 +14,7 @@ module pdec #(
     input wire aclk,
     input wire aresetn,
 
+    input logic pixel_valid_in,
     input uint16_t pixel_in,
     input pdec pdec_in,
     input mcore_t mcore,
@@ -21,10 +22,7 @@ module pdec #(
     output wire transparent,
     output uint16_t amv_out,
     output uint16_t pres_out,
-
-
-    output wire ap_busy,
-    output wire ap_data_ready
+    output logic pixel_valid_out
 );
 
 pdeco pix1;
@@ -77,18 +75,18 @@ end
 assign pres_out = pres_reg;
 assign amv_out = amv_reg;
 assign transparent = transparent_reg;
-assign ap_busy = '0;
-assign ap_data_ready = '1;
 
 always_ff @(posedge aclk, negedge aresetn) begin
     if (!aresetn) begin
         pres_reg <= '0;
         amv_reg <= '0;
         transparent_reg <= '0;
+        pixel_valid_out <= '0;
     end else begin
         pres_reg <= pres_next;
         amv_reg <= amv_next;
         transparent_reg <= transparent_next;
+        pixel_valid_out <= pixel_valid_in;
     end
 end
 

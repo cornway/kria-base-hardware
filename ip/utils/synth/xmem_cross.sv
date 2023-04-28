@@ -55,6 +55,8 @@ endmodule
 
 
 module xmem_cross_rr #(
+    parameter ADDR_WIDTH = 32'd32,
+    parameter DATA_WIDTH = 32'd32,
     parameter NUM_MASTERS = 2
 ) (
     input logic aclk,
@@ -91,6 +93,8 @@ arbiter_RR #(
 );
 
 xmem_master_mux #(
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .DATA_WIDTH(DATA_WIDTH),
     .NUM_MASTERS(NUM_MASTERS)
 ) xmem_master_mux_inst (
     .aclk(aclk),

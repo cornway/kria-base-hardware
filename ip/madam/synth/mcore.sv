@@ -61,7 +61,7 @@ assign mr_douta = mr_douta_reg;
 mem_if #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH)
-) ps_mem();
+) bitreader_mem();
 
 mem_if #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -181,6 +181,11 @@ always_ff @(posedge mr_clka) begin
                     32'h41: begin
                         mr_douta_reg <=  {'0, framebuffer_if.busy, framebuffer_if.pixel};
                     end
+
+                    32'h50: begin
+                        mr_douta_reg <= {'0, br_busy};
+                    end
+
                     //Test Memory
                     32'h100: begin
                         mr_douta_reg <= ps_mem_test.addr;
@@ -276,6 +281,19 @@ always_ff @( posedge mr_clka ) begin
                             framebuffer_if.pixel <= mr_dina[15:0];
                             framebuffer_if.req <= '1;
                         end
+
+                        //Bitmap row
+                        32'h51: begin
+                            br_xcur <= mr_dina;
+                        end
+                        32'h52: begin
+                            br_ycur <= mr_dina;
+                        end
+                        32'h53: begin
+                            br_cnt <= mr_dina[15:0];
+                            br_bpp <= mr_dina[31:16];
+                            br_req <= '1;
+                        end
                         32'h100: begin
                             ps_mem_test.addr <= mr_dina;
                         end
@@ -320,6 +338,16 @@ always_ff @( posedge mr_clka ) begin
         if (framebuffer_if.busy) begin
             framebuffer_if.req <= '0;
         end
+
+        if (br_busy) begin
+            br_req <= '0;
+        end
+
+        if (!br_if.busy && br_pix_req) begin
+            br_if.req <= '1;
+            br_if.op <= BR_READ;
+            br_if.bitrate <= br_bpp;
+        end
     end
 end
 
@@ -334,29 +362,30 @@ bitreader #(.DATA_WIDTH(DATA_WIDTH),
                 .aclk(aclk),
                 .aresetn(aresetn && bitreader_aresetn),
 
-                .memory(ps_mem.slave),
+                .memory(bitreader_mem.slave),
                 .br_if(br_if.master),
 
-                .debug_port(debug_port)
+                .debug_port(debug_port[7:0])
             );
 
 pdec pdec_data;
 logic pdec_transparent;
 logic [15:0] pdec_amv;
 logic [15:0] pdec_pres;
+logic pdec_valid;
 
 pdec #(
 ) pdec_inst (
     .aclk(aclk),
     .aresetn(aresetn),
+    .pixel_valid_in(br_if.data_ready),
     .pixel_in(br_if.data),
     .pdec_in(pdec_data),
     .mcore(mcore),
     .transparent(pdec_transparent),
     .amv_out(pdec_amv),
     .pres_out(pdec_pres),
-    .ap_busy(),
-    .ap_data_ready()
+    .pixel_valid_out(pdec_valid)
 );
 
 mem_if #(
@@ -378,6 +407,39 @@ frame_buffer #(
     .framebuffer_if(framebuffer_if.master)
 );
 
+logic [15:0] br_bpp;
+logic br_req, br_busy, br_pix_req;
+logic [31:0] br_xcur;
+logic [31:0] br_ycur;
+logic [31:0] br_cnt;
+
+mem_if #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) bitmap_row_mem();
+
+draw_bmap_row #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .PIXEL_WIDTH(PIXEL_WIDTH),
+    .PIPE_LEN(32'd4)
+) draw_bmap_row_inst (
+    .aclk(aclk),
+    .aresetn(aresetn),
+    .memory(bitmap_row_mem),
+    .req(br_req),
+    .mcore(mcore),
+    .xcur_in(br_xcur),
+    .ycur_in(br_ycur),
+    .cnt_in(br_cnt),
+    .pdec_transparent_in(pdec_transparent),
+    .pix_req(br_pix_req),
+    .pix_resp(pdec_valid),
+    .pixel(pdec_pres),
+    .busy(br_busy),
+    .debug_port(debug_port[63:32])
+);
+
 assign mem_req = ps_mem_out.req;
 assign mem_addr = ps_mem_out.addr;
 assign mem_we = ps_mem_out.we;
@@ -390,14 +452,17 @@ assign ps_mem_out.rsp_rdata = mem_rsp_rdata;
 assign ps_mem_out.rsp_error = mem_rsp_error;
 
 
-xmem_cross_or #(
+xmem_cross_rr #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
-    .NUM_MASTERS(3)
-) xmem_cross_or_inst (
-    .m_if( '{   ps_mem.master,
+    .NUM_MASTERS(4)
+) xmem_cross_rr_inst (
+    .aclk(aclk),
+    .aresetn(aresetn),
+    .m_if( '{   bitreader_mem.master,
                 ps_mem_test.master,
-                fb_mem.master
+                fb_mem.master,
+                bitmap_row_mem.master
             } ),
 
     .s_if(ps_mem_out.slave)

@@ -108,20 +108,17 @@ draw_bmap_row #(
 );
 
 initial begin
-    xcur = '0;
-    ycur = '0;
-    cnt = '0;
+    xcur = 32'h10000;
+    ycur = 32'h30000;
+    cnt = 32'h10;
     pixel = '0;
     req = '0;
     mcore.wmod = 32'h500;
     `HDX1616(mcore) = 1'b1 << 16;
-    `HDY1616(mcore) = 1'b1  << 16;
+    `HDY1616(mcore) = '0;
 
     wait(aresetn);
 
-    xcur = 32'd10;
-    ycur = 32'd10;
-    cnt = 32'd10;
     pixel = 16'h7fff;
     req = '1;
     wait(busy);

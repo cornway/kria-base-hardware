@@ -28,7 +28,9 @@ module draw_bmap_row #(
 
     mem_if.slave memory,
 
-    output logic busy
+    output logic busy,
+
+    output logic [31:0] debug_port
 );
 
 
@@ -72,7 +74,7 @@ always_comb begin
             end
         end
         br_state_setup: begin
-            if (cnt_reg < cnt_in) begin
+            if (cnt_reg < (cnt_in - 1'b1)) begin
                 cnt_next = cnt_reg + 1'b1;
                 xp_next = xp_reg + hdx;
                 yp_next = yp_reg + hdy;
@@ -132,5 +134,38 @@ frame_buffer_piped #(
     .mcore(mcore),
     .framebuffer_if(framebuffer_if)
 );
+
+assign debug_port[3:0] = br_state == br_state_idle ? 4'ha :
+                        br_state == br_state_setup ? 4'hb :
+                        br_state == br_state_read ? 4'hc :
+                        br_state == br_state_write ? 4'hd : 4'h0;
+
+assign debug_port[8] = framebuffer_if.busy;
+assign debug_port[12] = framebuffer_if.req;
+assign debug_port[31:16] = cnt_reg;
+
+`ifndef SYNTHESIS
+
+always_ff @(posedge aclk) begin
+    case (br_state)
+        br_state_idle: begin
+            if (req) begin
+                $display("=== br_state_idle:");
+                $display("xp_next = %x, yp_next = %x", xp_next, yp_next);
+                $display("wmod=%x, HDX1616=%x, HDY1616=%x", mcore.wmod, `HDX1616(mcore), `HDY1616(mcore));
+            end
+        end
+        br_state_setup: begin
+            $display("=== br_state_setup:");
+            $display("xp_next=%x, yp_next=%x, cnt_nex=%x", xp_next, yp_next, cnt_next);
+        end
+        br_state_write: begin
+            $display("=== br_state_write:");
+            $display("xp_reg = %x, yp_reg = %x", xp_reg, yp_reg);
+        end
+    endcase
+end
+
+`endif
 
 endmodule
