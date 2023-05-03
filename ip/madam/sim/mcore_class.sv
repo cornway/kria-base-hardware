@@ -31,7 +31,7 @@ function logic [ADDR_WIDTH-1:0] get_wmod_addr();
 endfunction
 
 function logic [ADDR_WIDTH-1:0] get_cel_uint_addr(integer id);
-    return M_CEL_VARS_ADDR + ((id * DATA_WIDTH/8) | CEL_VARS_SUB_SIZE);
+    return M_CEL_VARS_ADDR + (((id | CEL_VARS_SUB_SIZE) * DATA_WIDTH/8));
 endfunction
 
 function logic [ADDR_WIDTH-1:0] get_cel_int_addr(integer id);
@@ -40,6 +40,10 @@ endfunction
 
 function logic [ADDR_WIDTH-1:0] get_utils_reg_addr(integer id);
     return M_UTIL_ADDR + ((id * DATA_WIDTH/8));
+endfunction
+
+function logic [ADDR_WIDTH-1:0] get_plut_addr();
+    return M_PLUT_ADDR;
 endfunction
 
 endclass

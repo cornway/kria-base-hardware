@@ -13,11 +13,45 @@ localparam ADDR_WIDTH = 32'd32;
 localparam PIXEL_WIDTH = 32'd16;
 localparam RD_LATENCY = 32'd2;
 localparam WR_LATENCY = 32'd1;
-localparam MEMORY_DEPTH = 32'h100000;
+localparam MEMORY_DEPTH = 32'h300000;
 localparam BRAM_READ_LATENCY = 32'd2;
 localparam TA = 2ns;
 localparam TT = 8ns;
 
+logic [15:0] PLUT[32] = '{
+    16'h0,
+    16'h7fff,
+    16'h77fe,
+    16'h6b9b,
+    16'h5f39,
+    16'h7fff,
+    16'h67bc,
+    16'h4f59,
+    16'h3af6,
+    16'h63fc,
+    16'h5398,
+    16'h4314,
+    16'h3af6,
+    16'h4bfd,
+    16'h3b55,
+    16'h2a8f,
+    16'h2e91,
+    16'h2270,
+    16'h1a0d,
+    16'h15ee,
+    16'h11ca,
+    16'h3f58,
+    16'h32b3,
+    16'h25ed,
+    16'h1928,
+    16'h2a8f,
+    16'h222d,
+    16'h1dcb,
+    16'h1989,
+    16'h222d,
+    16'h1548,
+    16'h883
+};
 
 logic aclk;
 logic aresetn;
@@ -76,6 +110,8 @@ BramDrv_t bramDrv;
 initial begin
     xmemory = new(xmem_if_dv);
     xmemory.setup();
+    xmemory.set_memory("/tmp/test_data/draw_literal_0_before.bin");
+    xmemory.dump_memory("/tmp/test_data/draw_literal_0_before.bin.sim");
     xmemory.wait_ready();
     fork
         forever begin
@@ -83,6 +119,7 @@ initial begin
         end
         begin
             @(xmem_drv_done_event);
+            xmemory.dump_memory("/tmp/test_data/draw_literal_0.bin.sim");
             //xmemory.print_mem();
         end
     join
@@ -140,7 +177,25 @@ typedef McoreRegs #(
 
 McoreRegs_t mcoreRegs;
 
-logic [DATA_WIDTH-1:0] read_data;
+
+task automatic poll_done(ref BramDrv_t bramDrv);
+    automatic logic [DATA_WIDTH-1:0] read_data;
+    bramDrv.read(mcoreRegs.get_utils_reg_addr(32'h50), read_data);
+    while (read_data[0]) begin
+        bramDrv.read(mcoreRegs.get_utils_reg_addr(32'h50),read_data);
+    end
+endtask
+
+task automatic load_plut(ref BramDrv_t bramDrv, ref McoreRegs_t regs, input logic [15:0] PLUT[32]);
+    automatic integer i;
+    automatic logic [ADDR_WIDTH-1:0] addr;
+
+    addr = regs.get_plut_addr();
+    for (i = 0; i < 32; i++) begin
+        bramDrv.write(addr, PLUT[i]);
+        addr += DATA_WIDTH/8;
+    end
+endtask
 
 initial begin
     mcoreRegs = new();
@@ -149,24 +204,41 @@ initial begin
     bramDrv.setup();
     bramDrv.wait_ready();
 
-    //attach bitreader
-    bramDrv.write(mcoreRegs.get_utils_reg_addr(32'h1), '0);
 
+    //Draw bitmap row
     bramDrv.write(mcoreRegs.get_wmod_addr(), 32'h500);
     bramDrv.write(mcoreRegs.get_cel_int_addr(HDX1616_ID), 1'b1 << 16);
     bramDrv.write(mcoreRegs.get_cel_int_addr(HDY1616_ID), '0);
 
-    //xcur
-    bramDrv.write(mcoreRegs.get_utils_reg_addr(32'h51), 32'h10000);
-    //ycur
-    bramDrv.write(mcoreRegs.get_utils_reg_addr(32'h52), 32'h30000);
-    //cnt, bpp, trigger
-    bramDrv.write(mcoreRegs.get_utils_reg_addr(32'h53), {16'h6, 16'h160});
+    //Draw literal core
+    bramDrv.write(mcoreRegs.get_cel_int_addr(XPOS1616_ID), 32'h10000);
+    bramDrv.write(mcoreRegs.get_cel_int_addr(YPOS1616_ID), 32'h30000);
 
-    bramDrv.read(mcoreRegs.get_utils_reg_addr(32'h50), read_data);
-    while (read_data[0]) begin
-        bramDrv.read(mcoreRegs.get_utils_reg_addr(32'h50),read_data);
-    end
+    bramDrv.write(mcoreRegs.get_cel_uint_addr(PRE0_ID), 32'h7c4);
+    bramDrv.write(mcoreRegs.get_cel_int_addr(SPRWI_ID), 32'ha0);
+    bramDrv.write(mcoreRegs.get_cel_int_addr(BITCALC_ID), '0);
+    bramDrv.write(mcoreRegs.get_cel_int_addr(VDX1616_ID), '0);
+    bramDrv.write(mcoreRegs.get_cel_int_addr(VDY1616_ID), 32'h10000);
+    bramDrv.write(mcoreRegs.get_cel_int_addr(TEXTURE_HI_LIM_ID), 32'h20);
+    bramDrv.write(mcoreRegs.get_mregs_addr(PDATA_MREG_ID), 32'h271bd0);
+
+    bramDrv.write(mcoreRegs.get_cel_int_addr(TEXTURE_WI_LIM_ID), 32'h13f);
+    bramDrv.write(mcoreRegs.get_cel_int_addr(TEXTURE_HI_START_ID), 32'h0);
+    bramDrv.write(mcoreRegs.get_cel_int_addr(TEXTURE_WI_START_ID), '0);
+
+    //PDEC
+    bramDrv.write(mcoreRegs.get_utils_reg_addr(32'h20), 32'h0);
+    bramDrv.write(mcoreRegs.get_utils_reg_addr(32'h21), 32'hf);
+    bramDrv.write(mcoreRegs.get_utils_reg_addr(32'h22), 32'h1);
+
+    //PLUT
+    load_plut(bramDrv, mcoreRegs, PLUT);
+
+    //offset, trigger
+    bramDrv.write(mcoreRegs.get_utils_reg_addr(32'h51), 32'h1c);
+
+
+    poll_done(bramDrv);
     $display("Clocks taken : %d", clock_count);
     -> xmem_drv_done_event;
     repeat(20) @(posedge aclk);

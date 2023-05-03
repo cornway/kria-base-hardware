@@ -66,11 +66,6 @@ mem_if #(
 mem_if #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH)
-) ps_mem_test();
-
-mem_if #(
-    .DATA_WIDTH(DATA_WIDTH),
-    .ADDR_WIDTH(ADDR_WIDTH)
 ) ps_mem_out();
 
 
@@ -117,6 +112,20 @@ always_ff @( posedge mr_clka ) begin
         default: begin
         end
         endcase
+
+        if (draw_literal_0_done) begin
+            `PRE0               (mcore) <= `PRE0            (draw_literal_0_mcore_out);
+            `TEXTURE_WI_START   (mcore) <= `TEXTURE_WI_START(draw_literal_0_mcore_out);
+            `SPRWI              (mcore) <= `SPRWI           (draw_literal_0_mcore_out);
+            `BITCALC            (mcore) <= `BITCALC         (draw_literal_0_mcore_out);
+            `VDX1616            (mcore) <= `VDX1616         (draw_literal_0_mcore_out);
+            `VDY1616            (mcore) <= `VDY1616         (draw_literal_0_mcore_out);
+            `TEXTURE_HI_LIM     (mcore) <= `TEXTURE_HI_LIM  (draw_literal_0_mcore_out);
+            `PDATA              (mcore) <= `PDATA           (draw_literal_0_mcore_out);
+            `TEXTURE_WI_LIM     (mcore) <= `TEXTURE_WI_LIM  (draw_literal_0_mcore_out);
+            `TEXTURE_HI_START   (mcore) <= `TEXTURE_HI_START(draw_literal_0_mcore_out);
+        end
+
     end
 end
 
@@ -183,19 +192,9 @@ always_ff @(posedge mr_clka) begin
                     end
 
                     32'h50: begin
-                        mr_douta_reg <= {'0, br_busy};
+                        mr_douta_reg <= {'0, draw_literal_0_busy};
                     end
 
-                    //Test Memory
-                    32'h100: begin
-                        mr_douta_reg <= ps_mem_test.addr;
-                    end
-                    32'h101: begin
-                        mr_douta_reg <= ps_mem_test_rsp_rdata_reg;
-                    end
-                    32'h102: begin
-                        mr_douta_reg <= {'0, ps_mem_test.rsp_valid};
-                    end
                 default: begin
                     mr_douta_reg <= '0;
                 end
@@ -227,13 +226,9 @@ always_ff @( posedge mr_clka ) begin
         ps_mem_offset <= '0;
         br_if.req <= '0;
         bitreader_aresetn <= '1;
+        draw_literal_0_req <= '0;
+        draw_literal_0_offset <= '0;
 
-        ps_mem_test.wdata <= '0;
-        ps_mem_test.addr <= '0;
-        ps_mem_test.req <= '0;
-        ps_mem_test.we <= '0;
-        ps_mem_test.be <= '0;
-        ps_mem_test_rsp_rdata_reg <= '0;
         pdec_data <= '{default: '0};
     end else begin
         if (mr_ena && mr_wea) begin
@@ -282,35 +277,10 @@ always_ff @( posedge mr_clka ) begin
                             framebuffer_if.req <= '1;
                         end
 
-                        //Bitmap row
+                        //Draw literal 0
                         32'h51: begin
-                            br_xcur <= mr_dina;
-                        end
-                        32'h52: begin
-                            br_ycur <= mr_dina;
-                        end
-                        32'h53: begin
-                            br_cnt <= mr_dina[15:0];
-                            br_bpp <= mr_dina[31:16];
-                            br_req <= '1;
-                        end
-                        32'h100: begin
-                            ps_mem_test.addr <= mr_dina;
-                        end
-                        32'h101: begin
-                            ps_mem_test.wdata <= mr_dina;
-                        end
-                        32'h102: begin
-                            ps_mem_test.req <= '1;
-                            ps_mem_test.we <= mr_dina[0];
-                            ps_mem_test.be <= '1;
-                        end
-                        32'h103: begin
-                            ps_mem_test.wdata <= '0;
-                            ps_mem_test.addr <= '0;
-                            ps_mem_test.req <= '0;
-                            ps_mem_test.we <= '0;
-                            ps_mem_test.be <= '0;
+                            draw_literal_0_offset <= mr_dina;
+                            draw_literal_0_req <= '1;
                         end
 
                         default: begin
@@ -327,26 +297,13 @@ always_ff @( posedge mr_clka ) begin
         if (!bitreader_aresetn) begin
             bitreader_aresetn <= '1;
         end
-        if (ps_mem_test.rsp_valid) begin
-            ps_mem_test.wdata <= '0;
-            ps_mem_test.addr <= '0;
-            ps_mem_test.req <= '0;
-            ps_mem_test.we <= '0;
-            ps_mem_test.be <= '0;
-            ps_mem_test_rsp_rdata_reg <= ps_mem_test.rsp_rdata;
-        end
+
         if (framebuffer_if.busy) begin
             framebuffer_if.req <= '0;
         end
 
-        if (br_busy) begin
-            br_req <= '0;
-        end
-
-        if (!br_if.busy && br_pix_req) begin
-            br_if.req <= '1;
-            br_if.op <= BR_READ;
-            br_if.bitrate <= br_bpp;
+        if (draw_literal_0_busy) begin
+            draw_literal_0_req <= '0;
         end
     end
 end
@@ -365,7 +322,7 @@ bitreader #(.DATA_WIDTH(DATA_WIDTH),
                 .memory(bitreader_mem.slave),
                 .br_if(br_if.master),
 
-                .debug_port(debug_port[7:0])
+                .debug_port()
             );
 
 pdec pdec_data;
@@ -407,37 +364,39 @@ frame_buffer #(
     .framebuffer_if(framebuffer_if.master)
 );
 
-logic [15:0] br_bpp;
-logic br_req, br_busy, br_pix_req;
-logic [31:0] br_xcur;
-logic [31:0] br_ycur;
-logic [31:0] br_cnt;
+mem_if #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) lit_bitmap_row_mem();
 
 mem_if #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH)
-) bitmap_row_mem();
+) lit_bitreader_mem();
 
-draw_bmap_row #(
+logic draw_literal_0_req;
+uint32_t draw_literal_0_offset;
+mcore_t draw_literal_0_mcore_out;
+logic draw_literal_0_busy;
+logic draw_literal_0_done;
+
+draw_literal_cel_0 #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH),
-    .PIXEL_WIDTH(PIXEL_WIDTH),
-    .PIPE_LEN(32'd4)
-) draw_bmap_row_inst (
+    .PIXEL_WIDTH(PIXEL_WIDTH)
+) draw_literal_cel_0_inst (
     .aclk(aclk),
     .aresetn(aresetn),
-    .memory(bitmap_row_mem),
-    .req(br_req),
+    .req(draw_literal_0_req),
+    .bitreader_mem(lit_bitreader_mem.slave),
+    .bitmap_row_mem(lit_bitmap_row_mem.slave),
+    .offset_in(draw_literal_0_offset),
+    .pdec_data(pdec_data),
     .mcore(mcore),
-    .xcur_in(br_xcur),
-    .ycur_in(br_ycur),
-    .cnt_in(br_cnt),
-    .pdec_transparent_in(pdec_transparent),
-    .pix_req(br_pix_req),
-    .pix_resp(pdec_valid),
-    .pixel(pdec_pres),
-    .busy(br_busy),
-    .debug_port(debug_port[63:32])
+    .mcore_out(draw_literal_0_mcore_out),
+    .busy(draw_literal_0_busy),
+    .ap_done(draw_literal_0_done),
+    .debug_port(debug_port[31:0])
 );
 
 assign mem_req = ps_mem_out.req;
@@ -460,9 +419,9 @@ xmem_cross_rr #(
     .aclk(aclk),
     .aresetn(aresetn),
     .m_if( '{   bitreader_mem.master,
-                ps_mem_test.master,
-                fb_mem.master,
-                bitmap_row_mem.master
+                lit_bitmap_row_mem.master,
+                lit_bitreader_mem.master,
+                fb_mem.master
             } ),
 
     .s_if(ps_mem_out.slave)

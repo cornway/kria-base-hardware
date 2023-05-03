@@ -93,7 +93,11 @@ class Xmemory #(
     parameter MEMORY_DEPTH = 32'd15
 );
 
-logic [DATA_WIDTH-1:0] ram [MEMORY_DEPTH];
+localparam MEMORY_DEPTH_WORDS = (MEMORY_DEPTH*8) / DATA_WIDTH;
+
+logic [DATA_WIDTH-1:0] ram [MEMORY_DEPTH_WORDS];
+
+typedef logic [DATA_WIDTH-1:0] data_t;
 
 virtual mem_if_dv #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -105,6 +109,33 @@ function new (virtual mem_if_dv #(
                 .ADDR_WIDTH(ADDR_WIDTH)
             ) xmem );
     this.xmem  = xmem;
+endfunction
+
+function automatic set_memory(input string fpath);
+    automatic int fd = $fopen(fpath, "rb");
+    automatic integer i;
+
+    $display("MEMORY_DEPTH_WORDS = %x", MEMORY_DEPTH_WORDS);
+    if (!fd) begin
+        $fatal("Couldnt open file \'%s\'", fpath);
+    end
+
+    $fread(ram, fd);
+    $fclose(fd);
+
+    for (i = 0; i < MEMORY_DEPTH_WORDS; i++) begin
+        ram [i] = { <<8{ram[i]} };
+    end
+endfunction;
+
+function automatic dump_memory(input string fpath);
+    automatic int fd = $fopen(fpath, "wb");
+    if (!fd) begin
+        $fatal("Couldnt open file \'%s\'", fpath);
+    end
+
+    $fwrite(fd, "%u", ram);
+    $fclose(fd);
 endfunction
 
 task cycle_start;
@@ -148,10 +179,11 @@ task automatic monitor ();
         $fatal(0, "xmem.addr exceeds memory capacity!");
     end
 
-    $display("Xmemory.monitor: addr = %x (words: %x), xmem.we=%x xmem.wdata=%x xmem.be=%x",
-                xmem.addr, addr_w, xmem.we, xmem.wdata, xmem.be);
-
     xmem.rsp_rdata = ram [addr_w];
+
+    $display("----------------------- Xmemory.monitor: addr = %x (words: %x), xmem.we=%x xmem.wdata=%x xmem.be=%x, xmem.rsp_rdata = %x",
+                xmem.addr, addr_w, xmem.we, xmem.wdata, xmem.be, xmem.rsp_rdata);
+
     if (xmem.we) begin
         wdata_mask = _get_data_mask(xmem.be);
         ram [addr_w] = (xmem.wdata & wdata_mask) | (ram [addr_w] & ~wdata_mask);

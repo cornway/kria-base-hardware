@@ -224,7 +224,7 @@ module frame_buffer_wrapper #(
 );
 
 
-if (PIPE_LEN > 0) begin
+if (PIPE_LEN > 1) begin
 
 frame_buffer_piped #(
     .DATA_WIDTH(DATA_WIDTH),

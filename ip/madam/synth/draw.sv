@@ -23,6 +23,7 @@ module draw_bmap_row #(
     input wire pdec_transparent_in,
 
     output logic pix_req,
+    input logic pix_busy,
     input logic pix_resp,
     input pixel_t pixel,
 
@@ -44,7 +45,7 @@ fb_if framebuffer_if();
 assign hdx = `HDX1616(mcore) >> 16;
 assign hdy = `HDY1616(mcore) >> 16;
 
-typedef enum logic [3:0] { br_state_idle, br_state_setup, br_state_read, br_state_write } br_state_e;
+typedef enum logic [4:0] { br_state_idle, br_state_setup, br_state_read_req, br_state_read_resp, br_state_write } br_state_e;
 
 br_state_e br_state, br_state_next;
 
@@ -68,7 +69,7 @@ always_comb begin
                 cnt_next = '0;
 
                 if (cnt_in)
-                    br_state_next = br_state_read;
+                    br_state_next = br_state_read_req;
                 else
                     br_state_next = br_state_setup;
             end
@@ -78,13 +79,18 @@ always_comb begin
                 cnt_next = cnt_reg + 1'b1;
                 xp_next = xp_reg + hdx;
                 yp_next = yp_reg + hdy;
-                br_state_next = br_state_read;
+                br_state_next = br_state_read_req;
             end else begin
                 br_state_next = br_state_idle;
             end
         end
-        br_state_read: begin
-            pix_req = '1;
+        br_state_read_req: begin
+            if (!pix_busy) begin
+                pix_req = '1;
+                br_state_next = br_state_read_resp;
+            end
+        end
+        br_state_read_resp: begin
             if (pix_resp) begin
                 br_state_next = br_state_write;
             end
@@ -137,12 +143,12 @@ frame_buffer_wrapper #(
 
 assign debug_port[3:0] = br_state == br_state_idle ? 4'ha :
                         br_state == br_state_setup ? 4'hb :
-                        br_state == br_state_read ? 4'hc :
+                        br_state == br_state_read_req ? 4'hc :
+                        br_state == br_state_read_resp ? 4'hd :
                         br_state == br_state_write ? 4'hd : 4'h0;
 
-assign debug_port[8] = framebuffer_if.busy;
-assign debug_port[12] = framebuffer_if.req;
-assign debug_port[31:16] = cnt_reg;
+assign debug_port[6:4] = '0;
+assign debug_port[7] = framebuffer_if.busy;
 
 `ifndef SYNTHESIS
 
@@ -150,18 +156,22 @@ always_ff @(posedge aclk) begin
     case (br_state)
         br_state_idle: begin
             if (req) begin
-                $display("=== br_state_idle:");
-                $display("xp_next = %x, yp_next = %x", xp_next, yp_next);
-                $display("wmod=%x, HDX1616=%x, HDY1616=%x", mcore.wmod, `HDX1616(mcore), `HDY1616(mcore));
+                $display("[BMAP DRAW ROW] === br_state_idle: req = %x", req);
+                $display("[BMAP DRAW ROW] xp_next = %x, yp_next = %x", xp_next, yp_next);
+                $display("[BMAP DRAW ROW]wmod=%x, HDX1616=%x, HDY1616=%x", mcore.wmod, `HDX1616(mcore), `HDY1616(mcore));
             end
         end
         br_state_setup: begin
-            $display("=== br_state_setup:");
-            $display("xp_next=%x, yp_next=%x, cnt_nex=%x", xp_next, yp_next, cnt_next);
+            $display("[BMAP DRAW ROW] === br_state_setup:");
+            $display("[BMAP DRAW ROW]xp_next=%x, yp_next=%x, cnt_nex=%x", xp_next, yp_next, cnt_next);
         end
         br_state_write: begin
-            $display("=== br_state_write:");
-            $display("xp_reg = %x, yp_reg = %x", xp_reg, yp_reg);
+            if (!framebuffer_if.busy) begin
+                $display("[BMAP DRAW ROW] === br_state_write:");
+                $display("[BMAP DRAW ROW] xp_reg = %x, yp_reg = %x", xp_reg, yp_reg);
+            end else begin
+                $display("[BMAP DRAW ROW] wait framebuffer ready");
+            end
         end
     endcase
 end

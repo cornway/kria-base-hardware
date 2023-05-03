@@ -5,7 +5,6 @@
 `include "pdec_defs.svh"
 `include "mcore_defs.svh"
 
-parameter PRE0_BPP_MASK = 32'h7;
 parameter PRE0_LINEAR = 32'h10;
 
 module pdec #(

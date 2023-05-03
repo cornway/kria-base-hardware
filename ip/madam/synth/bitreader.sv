@@ -206,6 +206,7 @@ always_ff @(posedge aclk, negedge aresetn) begin
     end
 end
 
+//TODO : Revisit this !
 always_ff @(posedge aclk) begin
     //1 Clock latency to settle the output
     br_if.data_ready <= data_ready;
@@ -259,36 +260,36 @@ always_ff @(posedge aclk) begin
     case (b_state)
         bstate_wait_req: begin
             if (br_if.req)
-                $display("bstate_wait_req: br_if.req=%x, br_if.op=%x", br_if.req, br_if.op);
+                $display("[BITREADER] bstate_wait_req: br_if.req=%x, br_if.op=%x", br_if.req, br_if.op);
         end
         bstate_attach: begin
-            $display("bstate_attach: addr=%x", bitreader_struct_next.addr);
+            $display("[BITREADER] bstate_attach: addr=%x", bitreader_struct_next.addr);
         end
         bstate_skip: begin
-            $display("bstate_skip #1: bit_skip_next=%x", bit_skip_next);
-            $display("bstate_skip #2: bitreader_struct_next.offset=%x", bitreader_struct_next.offset);
-            $display("bstate_skip #3: bitreader_struct_next.bit_offset=%x", bitreader_struct_next.bit_offset);
-            $display("bstate_skip #4: bitreader_struct_next.bits_count_cache=%x", bitreader_struct_next.bits_count_cache);
+            $display("[BITREADER] bstate_skip #1: bit_skip_next=%x", bit_skip_next);
+            $display("[BITREADER] bstate_skip #2: bitreader_struct_next.offset=%x", bitreader_struct_next.offset);
+            $display("[BITREADER] bstate_skip #3: bitreader_struct_next.bit_offset=%x", bitreader_struct_next.bit_offset);
+            $display("[BITREADER] bstate_skip #4: bitreader_struct_next.bits_count_cache=%x", bitreader_struct_next.bits_count_cache);
         end
         bstate_skip_invalidate: begin
-            $display("bstate_skip_invalidate: bitreader_struct_next.data_cache_valid=%x", bitreader_struct_next.data_cache_valid);
+            $display("[BITREADER] bstate_skip_invalidate: bitreader_struct_next.data_cache_valid=%x", bitreader_struct_next.data_cache_valid);
         end
         bstate_read_1: begin
-                $display("bstate_read_1: #1");
+                $display("[BITREADER] bstate_read_1: #1");
                 if (bitreader_struct_next.data_cache_valid)
-                    $display("bstate_read_1: #2 bits_word_offset=%x, data_out_reg=%x", bits_word_offset, data_out_reg);
+                    $display("[BITREADER] bstate_read_1: #2 bits_word_offset=%x, data_out_reg=%x", bits_word_offset, data_out_reg);
         end
         bstate_read_2: begin
-            $display("bstate_read_2: data_out_reg=%x", data_out_reg);
+            $display("[BITREADER] bstate_read_2: data_out_reg=%x", data_out_reg);
         end
         bstate_mem_read: begin
             if (memory.gnt)
-                $display("bstate_mem_read: memory.gnt=1");
+                $display("[BITREADER] bstate_mem_read: memory.gnt=1");
         end
         bstate_mem_resp: begin
             if (memory.rsp_valid) begin
-                $display("bstate_mem_resp #1: memory.rsp_valid=1 memory_rsp_rdata_next=%x", memory_rsp_rdata_next);
-                $display("bstate_mem_resp #2: b_state_mem_read_state=%x", b_state_mem_read_state);
+                $display("[BITREADER] bstate_mem_resp #1: memory.rsp_valid=1 memory_rsp_rdata_next=%x", memory_rsp_rdata_next);
+                $display("[BITREADER] bstate_mem_resp #2: b_state_mem_read_state=%x", b_state_mem_read_state);
             end
         end
     endcase

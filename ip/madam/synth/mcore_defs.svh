@@ -48,6 +48,7 @@ parameter M_ADDR_MASK = M_REGS_ADDR |
                         M_UTIL_ADDR |
                         M_CEL_VARS_ADDR;
 
+//Signed vars
 parameter HDDX1616_ID           = 0;
 parameter HDDY1616_ID           = 1;
 parameter HDX1616_ID            = 2;
@@ -74,6 +75,7 @@ parameter BITCALC_ID            = 21;
 
 
 
+//Unsigned vars
 parameter BITADDR_ID            = 0;
 parameter BITBUFLEN_ID          = 1;
 parameter BITBUF_ID             = 2;
@@ -92,8 +94,34 @@ parameter PXOR2_ID              = 13;
 
 
 parameter MREGS_FBTARGET_ID     = 32'h13c;
+parameter PDATA_MREG_ID = 32'h5ac;
+
+parameter logic [7:0] BPP [8] = { 7'd1, 7'd1, 7'd2, 7'd4, 7'd6, 7'd8, 7'd16, 7'd1 };
+parameter PRE0_BPP_MASK         = 32'h7;
+
+`define GET_BPP(_mcore) BPP[`PRE0(_mcore) & PRE0_BPP_MASK]
 
 `define HDX1616(_mcore) _mcore.cel_vars.var_signed[HDX1616_ID]
 `define HDY1616(_mcore) _mcore.cel_vars.var_signed[HDY1616_ID]
+
+`define PRE0(_mcore) _mcore.cel_vars.var_unsigned[PRE0_ID]
+
+`define XPOS1616(_mcore) _mcore.cel_vars.var_signed[XPOS1616_ID]
+`define YPOS1616(_mcore) _mcore.cel_vars.var_signed[YPOS1616_ID]
+`define SPRWI(_mcore) _mcore.cel_vars.var_signed[SPRWI_ID]
+`define SPRHI(_mcore) _mcore.cel_vars.var_signed[SPRHI_ID]
+`define TEXTURE_HI_START(_mcore) _mcore.cel_vars.var_signed[TEXTURE_HI_START_ID]
+`define TEXTURE_WI_START(_mcore) _mcore.cel_vars.var_signed[TEXTURE_WI_START_ID]
+
+`define TEXTURE_HI_LIM(_mcore) _mcore.cel_vars.var_signed[TEXTURE_HI_LIM_ID]
+`define TEXTURE_WI_LIM(_mcore) _mcore.cel_vars.var_signed[TEXTURE_WI_LIM_ID]
+
+`define BITCALC(_mcore) _mcore.cel_vars.var_signed[BITCALC_ID]
+
+`define VDX1616(_mcore) _mcore.cel_vars.var_signed[VDX1616_ID]
+`define VDY1616(_mcore) _mcore.cel_vars.var_signed[VDY1616_ID]
+
+`define PDATA(_mcore) _mcore.regs[PDATA_MREG_ID]
+`define FBTARGET(_mcore) _mcore.regs[MREGS_FBTARGET_ID]
 
 `endif /*MCORE_DEFS_SVH*/
