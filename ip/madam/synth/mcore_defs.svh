@@ -93,11 +93,14 @@ parameter PXOR1_ID              = 12;
 parameter PXOR2_ID              = 13;
 
 
-parameter MREGS_FBTARGET_ID     = 32'h13c;
-parameter PDATA_MREG_ID = 32'h5ac;
+parameter FBTARGET_ID     = 32'h13c;
+parameter PDATA_ID = 32'h5ac;
+
+parameter CLIPXY_ID = 32'h134;
 
 parameter logic [7:0] BPP [8] = { 7'd1, 7'd1, 7'd2, 7'd4, 7'd6, 7'd8, 7'd16, 7'd1 };
 parameter PRE0_BPP_MASK         = 32'h7;
+parameter CCB_MARIA             = 32'h1000;
 
 `define GET_BPP(_mcore) BPP[`PRE0(_mcore) & PRE0_BPP_MASK]
 
@@ -121,7 +124,15 @@ parameter PRE0_BPP_MASK         = 32'h7;
 `define VDX1616(_mcore) _mcore.cel_vars.var_signed[VDX1616_ID]
 `define VDY1616(_mcore) _mcore.cel_vars.var_signed[VDY1616_ID]
 
-`define PDATA(_mcore) _mcore.regs[PDATA_MREG_ID]
-`define FBTARGET(_mcore) _mcore.regs[MREGS_FBTARGET_ID]
+`define PDATA(_mcore) _mcore.regs[PDATA_ID]
+`define FBTARGET(_mcore) _mcore.regs[FBTARGET_ID]
+
+`define CLIPXVAL(_mcore) (_mcore.regs[CLIPXY_ID] & 32'h3ff)
+`define CLIPYVAL(_mcore) ((_mcore.regs[CLIPXY_ID] >> 16) & 32'h3ff)
+
+`define TEXEL_INCX(_mcore) _mcore.cel_vars.var_signed[TEXEL_INCX_ID]
+`define TEXEL_INCY(_mcore) _mcore.cel_vars.var_signed[TEXEL_INCY_ID]
+
+`define CCBFLAGS(_mcore) _mcore.cel_vars.var_unsigned[CCBFLAGS_ID]
 
 `endif /*MCORE_DEFS_SVH*/

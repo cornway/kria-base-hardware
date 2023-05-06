@@ -101,7 +101,7 @@ initial begin
             aclk = '0;
             aresetn = '0;
             mcore.wmod = 32'h500;
-            mcore.regs[MREGS_FBTARGET_ID] = 32'h200000;
+            mcore.regs[FBTARGET_ID] = 32'h200000;
             fb_pixel = '0;
             fb_x  = '0;
             fb_y  = '0;

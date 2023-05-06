@@ -50,7 +50,6 @@ logic [ADDR_WIDTH-1:0] mr_addra_off;
 logic [ADDR_WIDTH-1:0] mr_reg_id;
 logic [DATA_WIDTH-1:0] mr_douta_reg;
 logic [DATA_WIDTH-1:0] pbsq_dout;
-logic [DATA_WIDTH-1:0] ps_mem_test_rsp_rdata_reg;
 
 assign ps_mem_offset_out = ps_mem_offset;
 assign mr_addra_off = mr_addra & (~M_ADDR_MASK);

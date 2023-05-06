@@ -185,8 +185,8 @@ task automatic monitor ();
 
 
     addr_w = xmem.addr / (DATA_WIDTH/8);
-    if (addr_w >= MEMORY_DEPTH) begin
-        $fatal(0, "xmem.addr exceeds memory capacity!");
+    if (xmem.addr >= MEMORY_DEPTH) begin
+        $fatal(2, "xmem.addr exceeds memory capacity!");
     end
 
     xmem.rsp_rdata = ram [addr_w];

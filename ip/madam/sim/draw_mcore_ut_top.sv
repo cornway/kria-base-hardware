@@ -220,7 +220,7 @@ initial begin
     bramDrv.write(mcoreRegs.get_cel_int_addr(VDX1616_ID), '0);
     bramDrv.write(mcoreRegs.get_cel_int_addr(VDY1616_ID), 32'h10000);
     bramDrv.write(mcoreRegs.get_cel_int_addr(TEXTURE_HI_LIM_ID), 32'h20);
-    bramDrv.write(mcoreRegs.get_mregs_addr(PDATA_MREG_ID), 32'h271bd0);
+    bramDrv.write(mcoreRegs.get_mregs_addr(PDATA_ID), 32'h271bd0);
 
     bramDrv.write(mcoreRegs.get_cel_int_addr(TEXTURE_WI_LIM_ID), 32'h13f);
     bramDrv.write(mcoreRegs.get_cel_int_addr(TEXTURE_HI_START_ID), 32'h0);

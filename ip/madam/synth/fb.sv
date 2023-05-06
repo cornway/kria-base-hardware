@@ -69,7 +69,7 @@ always_comb begin
             fb_state_next = fb_state_calc_addr_2;
         end
         fb_state_calc_addr_2: begin
-            addr_next = mcore.regs[MREGS_FBTARGET_ID] + (offset_reg ^ 2);
+            addr_next = mcore.regs[FBTARGET_ID] + (offset_reg ^ 2);
             fb_state_next = fb_state_mem_write;
         end
         fb_state_mem_write: begin
