@@ -40,7 +40,6 @@ int32_t xvert_reg, yvert_reg;
 int32_t x_offset[2], y_offset[2];
 int32_t x_offset_next[2], y_offset_next[2];
 uint32_t pdata_offset, pdata_offset_next;
-int32_t tmp_const[3], tmp_const_next[3];
 int32_t offset;
 uint32_t row_count, row_count_next;
 uint32_t PRE0_step;
@@ -84,7 +83,6 @@ always_comb begin
     xvert_next = xvert_reg;
     yvert_next = yvert_reg;
     mcore_out_next = mcore_out_reg;
-    tmp_const_next = tmp_const;
     x_offset_next = x_offset;
     y_offset_next = y_offset;
     pdata_offset_next = pdata_offset;
@@ -296,7 +294,7 @@ draw_bmap_row #(
     .cnt_in(pix_count),
     .pdec_transparent_in(pdec_transparent),
     .pix_req(bmap_row_pix_req),
-    .pix_resp(pdec_valid),
+    .pix_valid(pdec_valid),
     .pix_busy(bit_if.busy),
     .pixel(pdec_pixel),
     .busy(bmap_row_busy),
@@ -328,10 +326,6 @@ always_ff @(posedge aclk) begin
 
                 $display("[DRAW LITERAL CEL] TEXTURE_WI_START = %x",    `TEXTURE_WI_START   (mcore_out_next));
                 $display("[DRAW LITERAL CEL] TEXTURE_HI_START = %x",    `TEXTURE_HI_START   (mcore_out_next));
-
-                $display("[DRAW LITERAL CEL] *TEXTURE_WI_START = %x",    `TEXTURE_WI_START   (mcore));
-                $display("[DRAW LITERAL CEL] *TEXTURE_HI_START = %x",    `TEXTURE_HI_START   (mcore));
-
 
                 $display("[DRAW LITERAL CEL] PDATA = %x",               `PDATA(mcore_out_next) );
 

@@ -3,12 +3,17 @@
 
 package bram_pkg;
 
+import bramif_pkg::*;
+
 class BramDrv #(
     parameter DATA_WIDTH = 32'd32,
     parameter ADDR_WIDTH = 32'd32,
     parameter BRAM_READ_LATENCY = 32'd1,
     parameter TT = 8ns,
     parameter TA = 2ns
+) implements BramIf #(
+    .data_t(logic[DATA_WIDTH-1:0]),
+    .addr_t(logic[ADDR_WIDTH-1:0])
 );
 
 virtual bram_if_dv #(
@@ -48,7 +53,7 @@ task wait_ready();
 endtask
 
 
-task write (input logic [ADDR_WIDTH-1:0] addr, input logic [DATA_WIDTH-1:0] data);
+virtual task write (input logic [ADDR_WIDTH-1:0] addr, input logic [DATA_WIDTH-1:0] data);
     bram.wea <= #TA '1;
     bram.ena <= #TA '1;
     bram.dina <= #TA data;
@@ -62,7 +67,7 @@ task write (input logic [ADDR_WIDTH-1:0] addr, input logic [DATA_WIDTH-1:0] data
 endtask
 
 
-task read (input logic [ADDR_WIDTH-1:0] addr, output logic [DATA_WIDTH-1:0] data);
+virtual task read (input logic [ADDR_WIDTH-1:0] addr, output logic [DATA_WIDTH-1:0] data);
     bram.wea <= #TA '0;
     bram.ena <= #TA '1;
     bram.addra <= #TA addr;

@@ -3,11 +3,12 @@
 `include "mcore_defs.svh"
 
 
-module draw_bmap_row #(
+module draw_row #(
     parameter DATA_WIDTH = 32'd32,
     parameter ADDR_WIDTH = 32'd32,
     parameter PIXEL_WIDTH = 32'd16,
-    parameter PIPE_LEN = 32'd4
+    parameter PIPE_LEN = 32'd4,
+    parameter string MODULE_NAME = "draw_row"
 ) (
     input wire aclk,
     input wire aresetn,
@@ -24,7 +25,7 @@ module draw_bmap_row #(
 
     output logic pix_req,
     input logic pix_busy,
-    input logic pix_resp,
+    input logic pix_valid,
     input pixel_t pixel,
 
     mem_if.slave memory,
@@ -79,7 +80,11 @@ always_comb begin
                 cnt_next = cnt_reg + 1'b1;
                 xp_next = xp_reg + hdx;
                 yp_next = yp_reg + hdy;
-                br_state_next = br_state_read_req;
+                //For fixed (draw line) operation
+                if (pix_valid)
+                    br_state_next = br_state_write;
+                else
+                    br_state_next = br_state_read_req;
             end else begin
                 br_state_next = br_state_idle;
             end
@@ -91,7 +96,7 @@ always_comb begin
             end
         end
         br_state_read_resp: begin
-            if (pix_resp) begin
+            if (pix_valid) begin
                 br_state_next = br_state_write;
             end
         end
@@ -156,26 +161,111 @@ always_ff @(posedge aclk) begin
     case (br_state)
         br_state_idle: begin
             if (req) begin
-                $display("[BMAP DRAW ROW] === br_state_idle: req = %x", req);
-                $display("[BMAP DRAW ROW] xp_next = %x, yp_next = %x", xp_next, yp_next);
-                $display("[BMAP DRAW ROW]wmod=%x, HDX1616=%x, HDY1616=%x", mcore.wmod, `HDX1616(mcore), `HDY1616(mcore));
+                $display("%s  === br_state_idle: req = %x", MODULE_NAME, req);
+                $display("%s  xp_next = %x, yp_next = %x", MODULE_NAME, xp_next, yp_next);
+                $display("%s wmod=%x, HDX1616=%x, HDY1616=%x", MODULE_NAME, mcore.wmod, `HDX1616(mcore), `HDY1616(mcore));
             end
         end
         br_state_setup: begin
-            $display("[BMAP DRAW ROW] === br_state_setup:");
-            $display("[BMAP DRAW ROW]xp_next=%x, yp_next=%x, cnt_nex=%x", xp_next, yp_next, cnt_next);
+            $display("%s  === br_state_setup:", MODULE_NAME);
+            $display("%s xp_next=%x, yp_next=%x, cnt_nex=%x", MODULE_NAME, xp_next, yp_next, cnt_next);
         end
         br_state_write: begin
             if (!framebuffer_if.busy) begin
-                $display("[BMAP DRAW ROW] === br_state_write:");
-                $display("[BMAP DRAW ROW] xp_reg = %x, yp_reg = %x", xp_reg, yp_reg);
+                $display("%s  === br_state_write:", MODULE_NAME);
+                $display("%s  xp_reg = %x, yp_reg = %x", MODULE_NAME, xp_reg, yp_reg);
             end else begin
-                $display("[BMAP DRAW ROW] wait framebuffer ready");
+                $display("%s  wait framebuffer ready", MODULE_NAME);
             end
         end
     endcase
 end
 
 `endif
+
+endmodule
+
+
+module draw_bmap_row #(
+    parameter DATA_WIDTH = 32'd32,
+    parameter ADDR_WIDTH = 32'd32,
+    parameter PIXEL_WIDTH = 32'd16,
+    parameter PIPE_LEN = 32'd4
+) (
+    input wire aclk,
+    input wire aresetn,
+
+    input wire req,
+
+    input mcore_t mcore,
+
+    input int32_t xcur_in,
+    input int32_t ycur_in,
+    input int32_t cnt_in,
+
+    input wire pdec_transparent_in,
+
+    output logic pix_req,
+    input logic pix_busy,
+    input logic pix_valid,
+    input pixel_t pixel,
+
+    mem_if.slave memory,
+
+    output logic busy,
+
+    output logic [31:0] debug_port
+);
+
+draw_row #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .PIXEL_WIDTH(PIXEL_WIDTH),
+    .PIPE_LEN(PIPE_LEN),
+    .MODULE_NAME("DRAW BMAP ROW")
+) draw_row_inst (
+    .*
+);
+
+endmodule
+
+module draw_line_row #(
+    parameter DATA_WIDTH = 32'd32,
+    parameter ADDR_WIDTH = 32'd32,
+    parameter PIXEL_WIDTH = 32'd16,
+    parameter PIPE_LEN = 32'd4
+) (
+    input wire aclk,
+    input wire aresetn,
+
+    input wire req,
+
+    input mcore_t mcore,
+
+    input int32_t xcur_in,
+    input int32_t ycur_in,
+    input int32_t cnt_in,
+
+    input pixel_t pixel,
+
+    mem_if.slave memory,
+
+    output logic busy,
+
+    output logic [31:0] debug_port
+);
+
+draw_row #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .PIXEL_WIDTH(PIXEL_WIDTH),
+    .PIPE_LEN(PIPE_LEN),
+    .MODULE_NAME("DRAW LINE ROW")
+) draw_row_inst (
+    .*,
+    .pix_busy('1),
+    .pix_valid('1),
+    .pdec_transparent_in('0)
+);
 
 endmodule

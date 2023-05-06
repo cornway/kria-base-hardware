@@ -93,11 +93,21 @@ class Xmemory #(
     parameter MEMORY_DEPTH = 32'd15
 );
 
-localparam MEMORY_DEPTH_WORDS = (MEMORY_DEPTH*8) / DATA_WIDTH;
-
-logic [DATA_WIDTH-1:0] ram [MEMORY_DEPTH_WORDS];
+typedef Xmemory #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH),
+    .RD_LATENCY(RD_LATENCY),
+    .WR_LATENCY(WR_LATENCY),
+    .MEMORY_DEPTH(MEMORY_DEPTH),
+    .TT(TT),
+    .TA(TA)
+) Xmemory_t;
 
 typedef logic [DATA_WIDTH-1:0] data_t;
+
+localparam MEMORY_DEPTH_WORDS = (MEMORY_DEPTH*8) / DATA_WIDTH;
+
+local logic [DATA_WIDTH-1:0] ram [MEMORY_DEPTH_WORDS];
 
 virtual mem_if_dv #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -138,11 +148,11 @@ function automatic dump_memory(input string fpath);
     $fclose(fd);
 endfunction
 
-task cycle_start;
+local task cycle_start;
     @(posedge xmem.aclk iff xmem.req);
 endtask
 
-task cycle_end;
+local task cycle_end;
     @(posedge xmem.aclk);
 endtask
 
@@ -158,7 +168,7 @@ task setup();
     ram = '{default: '0};
 endtask
 
-function automatic logic [DATA_WIDTH-1:0] _get_data_mask(input logic [DATA_WIDTH/8-1:0] be);
+local function automatic logic [DATA_WIDTH-1:0] _get_data_mask(input logic [DATA_WIDTH/8-1:0] be);
     logic [DATA_WIDTH-1:0] mask = '0;
     for (integer i  = 0; i < DATA_WIDTH/8; i++) begin
         mask = mask | ({8{be[i]}} << (i * 8));
@@ -214,6 +224,23 @@ function print_mem();
     foreach (ram[i])
         $display("ram[%d] = %x", i, ram[i]);
     $display("=== Memory content ===");
+endfunction
+
+function integer cmp_mem(ref Xmemory_t xmem);
+    integer i;
+    integer err_count = 0;
+
+    if (MEMORY_DEPTH_WORDS != xmem.MEMORY_DEPTH_WORDS)
+        $fatal("Xmemory.cmp: memories size are different");
+
+    for (i = 0; i < MEMORY_DEPTH_WORDS; i++) begin
+        if (ram[i] != xmem.ram[i]) begin
+            $display("Xmemory.mem_cmp: Memory content is different: addr=%x (words: %x) ram(%x) != xmem.ram[%x]",
+                i*(DATA_WIDTH/8), i, ram[i], xmem.ram[i]);
+                err_count++;
+        end
+    end
+    return err_count;
 endfunction
 
 endclass
