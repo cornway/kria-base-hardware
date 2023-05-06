@@ -229,15 +229,17 @@ endfunction
 function integer cmp_mem(ref Xmemory_t xmem);
     integer i;
     integer err_count = 0;
+    integer err_count_print_max = 10;
 
     if (MEMORY_DEPTH_WORDS != xmem.MEMORY_DEPTH_WORDS)
         $fatal("Xmemory.cmp: memories size are different");
 
     for (i = 0; i < MEMORY_DEPTH_WORDS; i++) begin
         if (ram[i] != xmem.ram[i]) begin
-            $display("Xmemory.mem_cmp: Memory content is different: addr=%x (words: %x) ram(%x) != xmem.ram[%x]",
-                i*(DATA_WIDTH/8), i, ram[i], xmem.ram[i]);
-                err_count++;
+            if (err_count < err_count_print_max)
+                $display("Xmemory.mem_cmp: Memory content is different: addr=%x (words: %x) ram(%x) != xmem.ram[%x]",
+                    i*(DATA_WIDTH/8), i, ram[i], xmem.ram[i]);
+            err_count++;
         end
     end
     return err_count;
