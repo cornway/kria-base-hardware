@@ -45,6 +45,23 @@ localparam DATA_ADDR_INC = DATA_WIDTH/8;
 `define ADDR_TO_REG_ID(_addr) (_addr >> $clog2(DATA_WIDTH/8))
 `define BITS_FROM_INDEX(_i, _bits) (_i + 1) * _bits - 1 : _i * _bits
 
+pdec pdec_data;
+logic pdec_transparent;
+logic [15:0] pdec_amv;
+logic [15:0] pdec_pres;
+logic pdec_valid;
+
+logic draw_literal_0_req;
+uint32_t draw_literal_0_offset;
+mcore_t draw_literal_0_mcore_out;
+mcore_t draw_literal_1_mcore_out;
+logic draw_literal_0_busy;
+logic draw_literal_0_done;
+
+logic draw_literal_1_req;
+logic draw_literal_1_busy;
+logic draw_literal_1_done;
+
 logic [ADDR_WIDTH-1:0] ps_mem_offset;
 logic [ADDR_WIDTH-1:0] mr_addra_off;
 logic [ADDR_WIDTH-1:0] mr_reg_id;
@@ -120,13 +137,13 @@ always_ff @( posedge mr_clka ) begin
             `VDX1616            (mcore) <= `VDX1616         (draw_literal_0_mcore_out);
             `VDY1616            (mcore) <= `VDY1616         (draw_literal_0_mcore_out);
             `TEXTURE_HI_LIM     (mcore) <= `TEXTURE_HI_LIM  (draw_literal_0_mcore_out);
-            `PDATA              (mcore) <= `PDATA           (draw_literal_0_mcore_out);
             `TEXTURE_WI_LIM     (mcore) <= `TEXTURE_WI_LIM  (draw_literal_0_mcore_out);
             `TEXTURE_HI_START   (mcore) <= `TEXTURE_HI_START(draw_literal_0_mcore_out);
+            `PDATA              (mcore) <= `PDATA           (draw_literal_0_mcore_out);
         end
 
-        if (draw_literal_1_done) begin
-            `PDATA              (mcore) <= `PDATA           (draw_literal_0_mcore_out);
+        if (draw_literal_0_done || draw_literal_1_done) begin
+            `PDATA              (mcore) <= `PDATA           (draw_literal_1_mcore_out);
         end
 
     end
@@ -342,11 +359,7 @@ bitreader #(.DATA_WIDTH(DATA_WIDTH),
                 .debug_port()
             );
 
-pdec pdec_data;
-logic pdec_transparent;
-logic [15:0] pdec_amv;
-logic [15:0] pdec_pres;
-logic pdec_valid;
+
 
 pdec #(
 ) pdec_inst (
@@ -391,11 +404,6 @@ mem_if #(
     .ADDR_WIDTH(ADDR_WIDTH)
 ) lit_bitreader_mem();
 
-logic draw_literal_0_req;
-uint32_t draw_literal_0_offset;
-mcore_t draw_literal_0_mcore_out;
-logic draw_literal_0_busy;
-logic draw_literal_0_done;
 
 draw_literal_cel_0 #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -426,10 +434,6 @@ mem_if #(
     .ADDR_WIDTH(ADDR_WIDTH)
 ) lit_1_bitreader_mem();
 
-logic draw_literal_1_req;
-logic draw_literal_1_busy;
-logic draw_literal_1_done;
-
 draw_literal_cel_1 #(
     .DATA_WIDTH(DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH),
@@ -443,7 +447,7 @@ draw_literal_cel_1 #(
     .offset_in(draw_literal_0_offset),
     .pdec_data(pdec_data),
     .mcore(mcore),
-    .mcore_out(draw_literal_0_mcore_out),
+    .mcore_out(draw_literal_1_mcore_out),
     .busy(draw_literal_1_busy),
     .ap_done(draw_literal_1_done),
     .debug_port(debug_port[31:0])

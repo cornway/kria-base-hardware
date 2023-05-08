@@ -59,7 +59,6 @@ assign bit_if.bitskip = bitskip;
 assign bit_if.bitrate = `GET_BPP(mcore_out_reg);
 
 assign pix_count = `SPRWI(mcore_out_reg) - `TEXTURE_WI_START(mcore_out_reg);
-assign busy = do_state != do_wait_req;
 assign mcore_out = mcore_out_reg;
 
 typedef enum logic [15:0] {
@@ -77,6 +76,8 @@ typedef enum logic [15:0] {
     do_done
  } do_state_e;
 do_state_e do_state, do_state_next;
+
+assign busy = do_state != do_wait_req;
 
 always_comb begin
 

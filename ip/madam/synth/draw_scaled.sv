@@ -35,11 +35,11 @@ int32_t x_next, y_next;
 int32_t deltax_next, deltax_reg;
 int32_t deltay_next, deltay_reg;
 
-assign busy = do_state != do_wait_req;
 
 typedef enum logic[7:0] { do_wait_req, do_pretest, do_check_y, do_check_x, do_post_x, do_test_clip, do_write_pixel, do_done } do_state_e;
-
 do_state_e do_state, do_state_next;
+
+assign busy = do_state != do_wait_req;
 
 always_comb begin
     x_next = x_reg;
