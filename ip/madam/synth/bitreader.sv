@@ -27,6 +27,7 @@ typedef struct {
     logic [ADDR_WIDTH-1:0] bits_count_cache;
     logic [ADDR_WIDTH-1:0] offset;
     logic [$clog2(DATA_WIDTH):0] bit_offset;
+    logic                  overflow;
 } bitreader_struct_t;
 
 
@@ -105,6 +106,7 @@ always_comb begin
                     end
                     BR_READ: begin
                         bitskip_reg_next        = br_if.bitrate;
+                        bitreader_struct_next.overflow  = (bits_word_offset + br_if.bitrate) >= DATA_WIDTH;
                         b_state_next            = bstate_read_1;
                     end
                 endcase
@@ -134,7 +136,7 @@ always_comb begin
                 b_state_next = bstate_mem_read;
             end else begin
                 data_out_reg_next = bitreader_struct.data_cache >> bits_word_offset;
-                if (bits_word_offset + br_if.bitrate >= DATA_WIDTH) begin
+                if (bitreader_struct.overflow) begin
                     b_state_skip_state_next = bstate_mem_read;
                     b_state_mem_read_state_next = bstate_read_2;
                     b_state_next = bstate_skip;
@@ -192,7 +194,7 @@ always_ff @(posedge aclk, negedge aresetn) begin
                 data_ready <= '0;
             end
             bstate_read_1: begin
-                if (bitreader_struct.data_cache_valid && (bits_word_offset + br_if.bitrate < DATA_WIDTH)) begin
+                if (bitreader_struct.data_cache_valid && !bitreader_struct.overflow) begin
                     data_ready <= '1;
                 end
             end
@@ -255,6 +257,11 @@ assign debug_port[3:0] = b_state == bstate_wait_req         ? 5'h0 :
                         b_state == bstate_mem_resp          ? 5'h7 : '0;
 
 `ifndef SYNTHESIS
+
+assert property (@(posedge aclk) br_if.req |-> !br_if.busy) else
+    $fatal(1, "Bitreader must be requested if not busy!");
+assert property (@(posedge aclk) br_if.data_ready |-> ##[1:2] !br_if.busy) else
+    $fatal(1, "Bitreader must release once data is ready in 1:2 clock cycles!");
 
 always_ff @(posedge aclk) begin
     case (b_state)

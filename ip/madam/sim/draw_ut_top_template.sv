@@ -6,7 +6,7 @@ import xmem_pkg::*;
 import bram_pkg::*;
 import mcore_pkg::*;
 
-module draw_lit_cel_0_top;
+module UT_TOP_MODULE_NAME;
 
 localparam DATA_WIDTH = 32'd32;
 localparam ADDR_WIDTH = 32'd32;
@@ -31,7 +31,8 @@ typedef McoreRegs #(
     .ADDR_WIDTH(ADDR_WIDTH)
 ) McoreRegs_t;
 
-`include "draw_literal_0_cel_setup.svh"
+`include "CEL_SETUP_SVH"
+//`include "CEL_CHECK_SVH"
 
 typedef Xmemory #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -90,7 +91,8 @@ integer error_count;
 initial begin
     xmemory = new(xmem_if_dv);
     xmemory.setup();
-    xmemory.set_memory("/tmp/test_data/draw_literal_0_before.bin");
+    xmemory.set_memory("MEM_CAP_BEFORE");
+
     xmemory.wait_ready();
     fork
         forever begin
@@ -100,7 +102,7 @@ initial begin
             @(xmem_drv_done_event);
             xmemory_exp = new(xmem_if_dv_1);
             xmemory_exp.setup();
-            xmemory_exp.set_memory("/tmp/test_data/draw_literal_0_after.bin");
+            xmemory_exp.set_memory("MEM_CAP_AFTER");
             error_count = xmemory_exp.cmp_mem(xmemory);
             if (error_count)
                 $fatal(1, "Memory Check Faield !!! errors=%d", error_count);
@@ -161,14 +163,16 @@ initial begin
     bramDrv = new(xbram_if_dv);
     mcoreClass = new(bramDrv);
 
+    $dumpfile("dump.vcd");
+    $dumpvars();
+
     bramDrv.setup();
     bramDrv.wait_ready();
 
     setup_cel_core(mcoreClass);
 
-    //offset, trigger
-    mcoreClass.set_utils_reg(32'h51, 32'h1c);
-
+    //trigger
+    mcoreClass.set_utils_reg(TRIGGER_REG_NUM, '0);
 
     mcoreClass.poll_reg(mcoreClass.get_utils_reg_addr(32'h50), '0);
     $display("Clocks taken : %d", clock_count);

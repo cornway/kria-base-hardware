@@ -70,8 +70,16 @@ task automatic set_cel_int_var(input addr_t addr, input data_t data);
     this.bram.write(get_cel_int_addr(addr), data);
 endtask
 
+task automatic get_cel_int_var(input addr_t addr, output data_t data);
+    this.bram.read(get_cel_int_addr(addr), data);
+endtask
+
 task automatic set_cel_uint_var(input addr_t addr, input data_t data);
     this.bram.write(get_cel_uint_addr(addr), data);
+endtask
+
+task automatic get_cel_uint_var(input addr_t addr, output data_t data);
+    this.bram.read(get_cel_uint_addr(addr), data);
 endtask
 
 task automatic set_utils_reg(input addr_t addr, input data_t data);
@@ -80,6 +88,10 @@ endtask
 
 task automatic set_mregs(input addr_t addr, input data_t data);
     this.bram.write(get_mregs_addr(addr), data);
+endtask
+
+task automatic get_mregs(input addr_t addr, output data_t data);
+    this.bram.read(get_mregs_addr(addr), data);
 endtask
 
 task automatic poll_reg(logic[ADDR_WIDTH-1:0] addr, logic[DATA_WIDTH-1:0] exp);

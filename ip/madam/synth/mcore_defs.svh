@@ -17,6 +17,8 @@ typedef logic [7:0] byte_t;
 
 typedef logic[15:0] pixel_t;
 
+parameter ADDR_MAX_WIDTH = 128;
+
 parameter CEL_VARS_SUB_SIZE = 32'h80;
 
 typedef struct {
@@ -108,6 +110,7 @@ parameter CCB_MARIA             = 32'h1000;
 `define HDY1616(_mcore) _mcore.cel_vars.var_signed[HDY1616_ID]
 
 `define PRE0(_mcore) _mcore.cel_vars.var_unsigned[PRE0_ID]
+`define PRE1(_mcore) _mcore.cel_vars.var_unsigned[PRE1_ID]
 
 `define XPOS1616(_mcore) _mcore.cel_vars.var_signed[XPOS1616_ID]
 `define YPOS1616(_mcore) _mcore.cel_vars.var_signed[YPOS1616_ID]
@@ -134,5 +137,24 @@ parameter CCB_MARIA             = 32'h1000;
 `define TEXEL_INCY(_mcore) _mcore.cel_vars.var_signed[TEXEL_INCY_ID]
 
 `define CCBFLAGS(_mcore) _mcore.cel_vars.var_unsigned[CCBFLAGS_ID]
+
+`define PRE1_WOFFSET8_MASK  32'hff000000
+`define PRE1_WOFFSET8_SHIFT 24
+
+`define PRE1_WOFFSET10_MASK  32'h03ff0000
+`define PRE1_WOFFSET10_SHIFT 16
+
+`define PRE1_WOFFSET8(_mcore) ((`PRE1(_mcore) & `PRE1_WOFFSET8_MASK) >> `PRE1_WOFFSET8_SHIFT)
+`define PRE1_WOFFSET10(_mcore) ((`PRE1(_mcore) & `PRE1_WOFFSET10_MASK) >> `PRE1_WOFFSET10_SHIFT)
+
+`define PRE1_WOFFSET(_mcore, _offsetl) ((_offsetl) ? `PRE1_WOFFSET8(_mcore) : `PRE1_WOFFSET10(_mcore))
+
+
+//API
+parameter MCORE_DRAW_LITERAL_0_TRIGGER_ID = 32'h51;
+parameter MCORE_DRAW_LITERAL_1_TRIGGER_ID = 32'h61;
+
+parameter MCORE_DRAW_PACKED_0_TRIGGER_ID = 32'h71;
+
 
 `endif /*MCORE_DEFS_SVH*/

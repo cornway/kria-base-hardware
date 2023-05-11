@@ -127,7 +127,7 @@ function automatic set_memory(input string fpath);
 
     $display("MEMORY_DEPTH_WORDS = %x", MEMORY_DEPTH_WORDS);
     if (!fd) begin
-        $fatal("Couldnt open file \'%s\'", fpath);
+        $fatal(1, "Couldnt open file \'%s\'", fpath);
     end
 
     $fread(ram, fd);
@@ -141,7 +141,7 @@ endfunction;
 function automatic dump_memory(input string fpath);
     automatic int fd = $fopen(fpath, "wb");
     if (!fd) begin
-        $fatal("Couldnt open file \'%s\'", fpath);
+        $fatal(1, "Couldnt open file \'%s\'", fpath);
     end
 
     $fwrite(fd, "%u", ram);
@@ -186,7 +186,7 @@ task automatic monitor ();
 
     addr_w = xmem.addr / (DATA_WIDTH/8);
     if (xmem.addr >= MEMORY_DEPTH) begin
-        $fatal(2, "xmem.addr exceeds memory capacity!");
+        $fatal(1, "xmem.addr exceeds memory capacity!");
     end
 
     xmem.rsp_rdata = ram [addr_w];
@@ -232,12 +232,12 @@ function integer cmp_mem(ref Xmemory_t xmem);
     integer err_count_print_max = 10;
 
     if (MEMORY_DEPTH_WORDS != xmem.MEMORY_DEPTH_WORDS)
-        $fatal("Xmemory.cmp: memories size are different");
+        $fatal(1, "Xmemory.cmp: memories size are different");
 
     for (i = 0; i < MEMORY_DEPTH_WORDS; i++) begin
         if (ram[i] != xmem.ram[i]) begin
             if (err_count < err_count_print_max)
-                $display("Xmemory.mem_cmp: Memory content is different: addr=%x (words: %x) ram(%x) != xmem.ram[%x]",
+                $display("Xmemory.mem_cmp: Memory content is different: addr=%x (words: %x) got (%x) != exp [%x]",
                     i*(DATA_WIDTH/8), i, ram[i], xmem.ram[i]);
             err_count++;
         end

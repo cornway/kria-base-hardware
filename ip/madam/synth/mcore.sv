@@ -52,7 +52,6 @@ logic [15:0] pdec_pres;
 logic pdec_valid;
 
 logic draw_literal_0_req;
-uint32_t draw_literal_0_offset;
 mcore_t draw_literal_0_mcore_out;
 mcore_t draw_literal_1_mcore_out;
 logic draw_literal_0_busy;
@@ -61,6 +60,8 @@ logic draw_literal_0_done;
 logic draw_literal_1_req;
 logic draw_literal_1_busy;
 logic draw_literal_1_done;
+
+logic draw_pack_0_req, draw_pack_0_busy, draw_pack_0_done;
 
 logic [ADDR_WIDTH-1:0] ps_mem_offset;
 logic [ADDR_WIDTH-1:0] mr_addra_off;
@@ -212,12 +213,8 @@ always_ff @(posedge mr_clka) begin
                     end
 
                     32'h50: begin
-                        mr_douta_reg <= {'0, draw_literal_0_busy};
+                        mr_douta_reg <= {'0, draw_literal_0_busy, draw_literal_1_busy, draw_pack_0_busy};
                     end
-                    32'h60: begin
-                        mr_douta_reg <= {'0, draw_literal_1_busy};
-                    end
-
                 default: begin
                     mr_douta_reg <= '0;
                 end
@@ -250,7 +247,6 @@ always_ff @( posedge mr_clka ) begin
         br_if.req <= '0;
         bitreader_aresetn <= '1;
         draw_literal_0_req <= '0;
-        draw_literal_0_offset <= '0;
         draw_literal_1_req <= '0;
 
         pdec_data <= '{default: '0};
@@ -303,13 +299,11 @@ always_ff @( posedge mr_clka ) begin
 
                         //Draw literal 0
                         32'h51: begin
-                            draw_literal_0_offset <= mr_dina;
                             draw_literal_0_req <= '1;
                         end
 
                         //Draw literal 1
                         32'h61: begin
-                            draw_literal_0_offset <= mr_dina;
                             draw_literal_1_req <= '1;
                         end
 
@@ -404,6 +398,8 @@ mem_if #(
     .ADDR_WIDTH(ADDR_WIDTH)
 ) lit_bitreader_mem();
 
+uint32_t draw_literal_offset;
+assign draw_literal_offset = `PRE1_WOFFSET(mcore, `GET_BPP(mcore) < 8'd8);
 
 draw_literal_cel_0 #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -415,7 +411,7 @@ draw_literal_cel_0 #(
     .req(draw_literal_0_req),
     .bitreader_mem(lit_bitreader_mem.slave),
     .bitmap_row_mem(lit_bitmap_row_mem.slave),
-    .offset_in(draw_literal_0_offset),
+    .offset_in(draw_literal_offset),
     .pdec_data(pdec_data),
     .mcore(mcore),
     .mcore_out(draw_literal_0_mcore_out),
@@ -444,7 +440,7 @@ draw_literal_cel_1 #(
     .req(draw_literal_1_req),
     .bitreader_mem(lit_1_bitreader_mem.slave),
     .draw_mem(lit_1_draw_mem.slave),
-    .offset_in(draw_literal_0_offset),
+    .offset_in(draw_literal_offset),
     .pdec_data(pdec_data),
     .mcore(mcore),
     .mcore_out(draw_literal_1_mcore_out),
@@ -482,5 +478,13 @@ xmem_cross_rr #(
 
     .s_if(ps_mem_out.slave)
 );
+
+`ifndef SYNTHESIS
+
+initial begin
+    $monitor("**** draw_literal_offset = %x at %0t; PRE1=%x, GET_BPP=%x", draw_literal_offset, $time, `PRE1(mcore), `GET_BPP(mcore));
+end
+
+`endif
 
 endmodule

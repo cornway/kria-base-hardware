@@ -118,6 +118,11 @@ xmem_wconvert #(
     .m_if(pix_if.master)
 );
 
+`ifndef SYNTHESIS
+    assert property (@(posedge aclk) framebuffer_if.req |-> !framebuffer_if.busy) else
+        $fatal(1, "Request must be sent only if framebuffer is not busy!");
+`endif
+
 endmodule
 
 module frame_buffer_piped #(

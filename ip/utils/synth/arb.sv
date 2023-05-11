@@ -1,4 +1,6 @@
-
+/*
+    Simple round-robin arbiter
+ */
 
 module arbiter_RR #(
     parameter NUM_MASTERS = 2
@@ -11,7 +13,7 @@ module arbiter_RR #(
     /* Grant outpu, active high */
     output wire [NUM_MASTERS-1:0] gnt_out,
 
-    /* Requestor's release input, active high; Must go high after bus is granted */
+    /* Requestor's release input, active high; Must go high after bus is granted and released */
     input wire [NUM_MASTERS-1:0] release_in,
     /* Master select output; usually this is mux input */
     output wire [$clog2(NUM_MASTERS)-1:0] select,
